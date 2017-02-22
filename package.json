@@ -4,7 +4,7 @@
   "description": "Motorcycle Tracker project using a Particle Electron",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jasonrhaddix/electron-motorcycle-traker.git"
+    "url": "https://github.com/jasonrhaddix/Motorcycle_Tracker.git"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
