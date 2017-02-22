@@ -20,6 +20,13 @@
 
 
 
+// PIN VARS
+int POWER_PIN = D0;									 // Pin used to determine power states from external source
+int ALARM_PIN = D1;                                  // Pin used to trigger piezo alarm
+int WKP_PIN = A1;                                    // Pin used to used to wake tracker from SLEEP state
+
+
+
 
 void setup()
 {
