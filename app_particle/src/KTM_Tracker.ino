@@ -56,6 +56,28 @@ long timer_getGPS_GetLast = 0;                       // TIME since last GPS rese
 long timer_getGPS_GetTimeout = 60;                   // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                       // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
 
+// ACCELEROMETER VARS
+int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
+int accel_Current = 0;                               // Combined accelerometer reading - current registered
+bool timer_Accel_Start = 0;
+long timer_Accel_GetLast = 0;                        // TIME since last battery level check
+long timer_Accel_GetDelay = 20;                      // Check battery level every [x] minutes
+
+// BATTERY VARS
+int batt_AlertLevel = 20;                            // Send alert is less than [x] percentage
+int batt_CurrentLevel;                               // Current battery level
+int timer_GetBatt_GetLast = 0;
+int timer_getBatt_GetDelay = 15;
+
+// REST VARS
+long REST_LastPub = 0;                               // TIME since last battery level check
+long REST_PubDelay = 5;                              // Check battery level every [x] minutes
+String rest_pub = "";
+
+// ALERT VARS
+long ALERT_LastPub = 0;                              // TIME since last battery level check
+long ALERT_PubDelay = 15;                            // Check battery level every [x] seconds
+
 
 
 
@@ -103,13 +125,198 @@ void define_ExternalFunctions()
 
 void loop()
 {
+	tracker.updateGPS();
+	// POWER = digitalRead( POWER_PIN );
+
+	if( MASTER_ALERT ) APP_MODE = 4;
+	
+	if ( TIME - GLOBAL_LAST_CHECK > GLOBAL_LAST_CHECK_DELAY*60000UL || GLOBAL_BOOT_CHECK == 1 && APP_MODE != 4 ) check_StateMode();
+
+	if( APP_MODE != PREV_APP_MODE || APP_MODE > 1 )
+	{
+		switch( APP_MODE )
+		{
+			case 0 :
+				manageMode_BOOT();
+				break;
+
+			case 1 :
+				manageMode_SLEEP();
+				break;
+
+			case 2 :
+				manageMode_REST();
+				break;
+
+			case 3 :
+				manageMode_GUARD();
+				break;
+
+			case 4 :
+				manageMode_ALERT();
+				break;
+		}
+
+		PREV_APP_MODE = APP_MODE;
+	}
+
+}
+//****************************************************************/
+//****************************************************************/	
 
 
+
+
+//****************************************************************/
+// StateMode FUNCTIONS
+//****************************************************************/
+void check_StateMode()
+{
+	if ( tracker.gpsFix() ) {
+
+		GLOBAL_BOOT_CHECK = 0;
+		GLOBAL_LAST_CHECK = TIME;
+
+		POWER = digitalRead( POWER_PIN );
+		GPS = get_GPS();
+
+		check_BatteryLevel();
+
+		if ( GPS && POWER ) {             // <------------------------------------------- // REST
+			// HOME || ON
+			APP_MODE = 2;
+		} else if ( !GPS && POWER ) {     // <------------------------------------------- // REST
+			// NOT HOME || ON
+			APP_MODE = 2;
+		} else if ( GPS && !POWER ) {     // <------------------------------------------- // SLEEP
+			// HOME || OF
+			APP_MODE = 1;	
+		} else if ( !GPS && !POWER ) {    // <------------------------------------------ // GUARD
+			// NOT HOME || OFF
+			APP_MODE = 3;
+		} else {                          // <------------------------------------------ // GUARD
+			// DEFAULT
+			APP_MODE = 3;
+		}
+	}
 }
 
 
 
 
+void manageMode_BOOT()
+{
+	// Particle.publish("t-status", "BOOT", 60, PRIVATE);
+}
+
+
+
+void manageMode_SLEEP()
+{
+	// Particle.publish("t-status", "SLEEP", 60, PRIVATE);
+	if( ALARM ) kill_Alarm();
+
+	blink_RGB("0x7200FF", 255, 2, 2);
+
+	delay(2000);
+	System.sleep( WKP_PIN, RISING, DEEP_SLEEP_TIME*60000UL );
+
+	delay(2000);
+	System.reset();
+}
+
+
+
+void manageMode_REST()
+{
+	// Particle.publish("t-status", "REST", 60, PRIVATE);
+	if( ALARM ) kill_Alarm();
+	if ( TIME - REST_LastPub > REST_PubDelay*60000UL )
+	{
+		REST_LastPub = TIME;
+
+		int i = 0;
+		while ( i < gps_SampleSize_Ticks ) {
+
+			delay(1000);
+
+			gps_TrackerPos[0] = tracker.readLatDeg();
+		    gps_TrackerPos[1] = tracker.readLonDeg();
+
+			++i;
+		}	
+		
+		/*rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
+		Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);*/
+
+	}
+}
+
+
+
+void manageMode_GUARD()
+{
+	// Particle.publish("t-status", "GUARD", 60, PRIVATE);
+	if( ALARM ) kill_Alarm();
+	ACCEL = check_Accel();
+
+	if ( ACCEL && !timer_Accel_Start ) {
+		
+		timer_Accel_GetLast = TIME;
+		timer_Accel_Start = 1;
+
+		trigger_Alarm();
+
+		delay(100);
+	}
+
+	if ( ACCEL && TIME - timer_Accel_GetLast < timer_Accel_GetDelay*1000UL && timer_Accel_Start )
+	{
+		APP_MODE = 4;
+
+	} else if( TIME - timer_Accel_GetLast > timer_Accel_GetDelay*1000UL && timer_Accel_Start )
+	{
+		timer_Accel_Start = 0;
+	}
+}
+
+
+
+void manageMode_ALERT()
+{
+	// Particle.publish("t-status", "ALERT", 60, PRIVATE);
+	if( !ALARM ) trigger_Alarm();
+	ACCEL = check_Accel();
+
+	if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
+	{
+		ALERT_LastPub = TIME;
+
+		int i = 0;
+		while( i < gps_SampleSize_Ticks ) {
+
+			delay(1000);
+
+			gps_TrackerPos[0] = tracker.readLatDeg();
+		    gps_TrackerPos[1] = tracker.readLonDeg();
+
+			++i;
+		}	
+		
+		// rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
+		// Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);
+
+	}
+}
+//****************************************************************/
+//****************************************************************/	
+
+
+
+
+//****************************************************************/
+// GPS FUNCTIONS
+//****************************************************************/
 int get_GPS()
 {	
 	if ( tracker.gpsFix() ) {
@@ -172,6 +379,57 @@ double get_Distance( float start_lat, float start_long, float end_lat, float end
 //****************************************************************/
 // EXTERNAL FUNCTIONS
 //****************************************************************/
+int check_Accel()
+{
+	int accel;
+	accel_Current = tracker.readXYZmagnitude();
+
+	if ( accel_Current > accel_Threshold ) {
+
+		//accel_Threshold = accel_Current;
+		/*accel_Max_X = tracker.readX();
+		accel_Max_Y = tracker.readY();
+		accel_Max_Z = tracker.readZ();*/
+		
+		accel = 1;
+
+		Serial.println( tracker.readXYZmagnitude() );
+		// pubAccel = String::format( "{\"x\":%d,\"y\":%d,\"z\":%d}", accel_Max_X, accel_Max_Y,maxZ );
+	} else {
+
+		accel = 0;
+	}
+
+    return accel;
+}
+//****************************************************************/
+//****************************************************************/	
+
+
+
+
+//****************************************************************/
+// EXTERNAL FUNCTIONS
+//****************************************************************/
+void check_BatteryLevel()
+{
+	batt_CurrentLevel = fuel.getSoC();
+
+	if( batt_CurrentLevel <= batt_AlertLevel && TIME - timer_GetBatt_GetLast > timer_getBatt_GetDelay*60000UL)
+	{
+		timer_GetBatt_GetLast = TIME;
+		// Particle.publish("t-notify", "LOW BATTERY", 60, PRIVATE);
+	}
+}
+//****************************************************************/
+//****************************************************************/	
+
+
+
+
+//****************************************************************/
+// EXTERNAL FUNCTIONS
+//****************************************************************/
 // MANUALLY SET ALERT MODE
 int set_Mode_ALERT( String command )
 {
@@ -202,6 +460,79 @@ int get_Batt_Voltage( String command )
 {
 	int battVoltage = fuel.getVCell();
 	return battVoltage;
+}
+//****************************************************************/
+//****************************************************************/	
+
+
+
+
+//****************************************************************/
+// UTILITY FUNCTIONS
+//****************************************************************/
+void trigger_Alarm()
+{
+	ALARM = 1;
+}
+
+
+
+void kill_Alarm()
+{
+	ALARM = 0;
+}
+
+
+
+
+void blink_RGB( String color, int brightness, int rate, int duration )
+{
+	// int c = colorConverter(color);
+	RGB.control(true);
+	delay(10);
+	
+	int * rgb_color = colorConverter(color);
+	RGB.color(rgb_color[0], rgb_color[1], rgb_color[2]);	
+
+	long last = TIME;
+	long tick = 0;
+	boolean led = 1;
+	
+	while( TIME - last < duration*1000UL )
+	{
+		if ( tick >= 20000 / (rate/2) ) {
+			tick = 0;
+			
+			if(led) {
+				RGB.brightness(255);
+			} else {
+				RGB.brightness(0);
+			}
+
+			led = !led;
+		}
+
+		++tick;
+	}
+
+	delay(10);
+	RGB.control(false);
+}
+
+
+
+
+
+int * colorConverter(String hexValue)
+{
+	int color[3];
+
+	long long hex_num = strtoll( &hexValue[1], NULL, 16);
+	color[0] = hex_num >> 16;
+	color[1] = hex_num >> 8 & 0xFF;
+	color[2] = hex_num & 0xFF;
+
+  return color; 
 }
 //****************************************************************/
 //****************************************************************/	
