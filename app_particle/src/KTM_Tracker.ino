@@ -40,6 +40,14 @@ int PREV_APP_MODE;                                   // Previous APP_MODE state
 
 
 
+// PARTICLE HARDWARE VARS
+AssetTracker tracker = AssetTracker();                // Particle Tracker shield
+FuelGauge fuel;                                       // LiPo Battery
+CellularSignal cell;                                  // Electron cell module
+
+
+
+
 void setup()
 {
 
