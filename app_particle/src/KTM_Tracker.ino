@@ -20,6 +20,9 @@
 
 
 
+// USER CONTROLLED VARS
+bool MASTER_ALERT = 0;                               // Boolean to force ALERT mode
+
 // PIN VARS
 int POWER_PIN = D0;									 // Pin used to determine power states from external source
 int ALARM_PIN = D1;                                  // Pin used to trigger piezo alarm
