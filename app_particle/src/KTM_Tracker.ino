@@ -61,7 +61,19 @@ void setup()
 
   	tracker.begin();
 	tracker.gpsOn();
+
+	define_ExternalFunctions();
 }
+
+
+
+
+void define_ExternalFunctions()
+{
+	Particle.function( "ALERT", set_Mode_ALERT );
+	Particle.function( "CELL", get_Cell_Strength );	
+}
+
 
 
 
