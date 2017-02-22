@@ -52,6 +52,10 @@ void setup()
 {
 	Serial.begin(9600);
 
+	pinMode(POWER_PIN, INPUT);
+	pinMode(ALARM_PIN, OUTPUT);
+	pinMode(WKP_PIN, INPUT);
+
 	Time.zone(-8); 
   	Time.hourFormat12();
 }
