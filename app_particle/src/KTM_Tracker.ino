@@ -50,7 +50,10 @@ CellularSignal cell;                                  // Electron cell module
 
 void setup()
 {
+	Serial.begin(9600);
 
+	Time.zone(-8); 
+  	Time.hourFormat12();
 }
 
 
