@@ -58,6 +58,9 @@ void setup()
 
 	Time.zone(-8); 
   	Time.hourFormat12();
+
+  	tracker.begin();
+	tracker.gpsOn();
 }
 
 
