@@ -37,6 +37,10 @@ bool ALARM = 0;
 int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
 int PREV_APP_MODE;                                   // Previous APP_MODE state
 
+// WATCHDOG TIMER 
+long timer_WatchDog_ResetLast = 0;                   // TIME since last last system reset
+int timer_WatchDog_ResetDelay = 24;                  // [x] hours until full system reset
+
 
 
 
@@ -63,6 +67,7 @@ void setup()
 	tracker.gpsOn();
 
 	define_ExternalFunctions();
+	timer_WatchDog();
 }
 
 
@@ -82,3 +87,20 @@ void loop()
 
 
 }
+
+
+
+
+//****************************************************************/
+// WATCHDOG TIMER / SYSTEM RESET / Avoids stack overflow
+//****************************************************************/
+void timer_WatchDog()
+{
+	if ( TIME - timer_WatchDog_ResetLast > timer_WatchDog_ResetDelay*60000UL*60000UL ) {
+
+		System.reset();
+
+	}
+}
+//****************************************************************/
+//****************************************************************/	
