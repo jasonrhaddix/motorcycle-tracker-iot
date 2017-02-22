@@ -79,7 +79,9 @@ void setup()
 void define_ExternalFunctions()
 {
 	Particle.function( "ALERT", set_Mode_ALERT );
-	Particle.function( "CELL", get_Cell_Strength );	
+	Particle.function( "CELL", get_Cell_Strength );
+	Particle.function( "BATT_LEVEL", get_Batt_Level );	
+	Particle.function( "BATT_VOLTS", get_Batt_Voltage );	
 }
 
 
@@ -113,6 +115,22 @@ int get_Cell_Strength( String command )
 	cell = Cellular.RSSI();
 	// String rssi = String(cell.rssi) + String(",") + String(cell.qual);
 	return 1;
+}
+
+
+// GET BATTERY LEVEL
+int get_Batt_Level( String command )
+{
+	int battLevel = fuel.getSoC();
+	return battLevel;
+}
+
+
+// GET BATTERY VOLTAGE
+int get_Batt_Voltage( String command )
+{
+	int battVoltage = fuel.getVCell();
+	return battVoltage;
 }
 //****************************************************************/
 //****************************************************************/	
