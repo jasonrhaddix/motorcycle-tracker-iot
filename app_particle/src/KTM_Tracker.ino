@@ -83,6 +83,8 @@ void setup()
 
 	define_ExternalFunctions();
 	timer_WatchDog();
+
+	timer_getGPS_GetLast = TIME;
 }
 
 
