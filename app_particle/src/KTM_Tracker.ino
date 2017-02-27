@@ -41,8 +41,8 @@ int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: RE
 int PREV_APP_MODE;                                   // Previous APP_MODE state
 
 // WATCHDOG TIMER 
-long timer_WatchDog_ResetLast = 0;                   // TIME since last last system reset
-int timer_WatchDog_ResetDelay = 24;                  // [x] hours until full system reset
+long WATCHDOG_Timer_ResetLast = 0;                   // TIME since last last system reset
+int WATCHDOG_Timer_ResetDelay = 24;                  // [x] hours until full system reset
 
 // HAVERSINE (distance) FORMULA
 const float earthRadius = 6378100;                   // Radius of earth in meters
@@ -52,30 +52,28 @@ const float PI = 3.14159265;                         // Math.PI
 int HARDWARE_LAST = 1;
 
 // GPS VARS
-int gps_GeoFence_Radius = 100;                       // Geo-fence radius in meters
 float gps_HomePos[2] = { 33.773016, -118.149690 };   // long/lat of geo-fence point (HOME)
 float gps_TrackerPos[2];                             // Array used to store long/lat of GPS tracker
-long timer_getGPS_GetLast = 0;                       // TIME since last GPS reset
-long timer_getGPS_GetTimeout = 60;                   // (if no GPS fix) [x] seconds until system reset
+long gps_Timer_GetLast = 0;                       // TIME since last GPS reset
+long gps_Timer_GetTimeout = 60;                   // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                       // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
+int gps_GeoFence_Radius = 1;                       // Geo-fence radius in meters
 bool GPS_ON = 0;
 
 // ACCELEROMETER VARS
 int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
 int accel_Current = 0;                               // Combined accelerometer reading - current registered
-bool timer_Accel_Start = 0;
-long timer_Accel_GetLast = 0;                        // TIME since last battery level check
-long timer_Accel_GetDelay = 10;                      // Check battery level every [x] minutes
-long timer_Accel_SampleStart = 0;
-long timer_Accel_SampleEnd = 75;
-/*long timer_Accel_SampleError = 0;
-long timer_Accel_SampleError_Delay = 3;*/
+bool accel_Timer_Start = 0;
+long accel_Timer_GetLast = 0;                        // TIME since last battery level check
+long accel_Timer_GetDelay = 10;                      // Check battery level every [x] minutes
+long accel_Timer_SampleStart = 0;
+long accel_Timer_SampleEnd = 75;
 
 // BATTERY VARS
 int batt_AlertLevel = 20;                            // Send alert is less than [x] percentage
 int batt_CurrentLevel;                               // Current battery level
-int timer_GetBatt_GetLast = 0;						 //
-int timer_getBatt_GetDelay = 15;					 //
+int batt_Timer_GetLast = 0;						 //
+int batt_Timer_GetDelay = 15;					 //
 
 // REST VARS
 long REST_LastPub = 0;                               // TIME since last battery level check
@@ -111,9 +109,9 @@ void setup()
   	//tracker.begin();
 	set_HardwareMode(0);
 	define_ExternalFunctions();
-	timer_WatchDog();
+	WATCHDOG_Timer();
 
-	timer_getGPS_GetLast = TIME;
+	gps_Timer_GetLast = TIME;
 }
 
 
@@ -273,24 +271,28 @@ void manageMode_GUARD()
 	ACCEL = check_Accel();
 
 
-	if ( ACCEL && TIME - timer_Accel_GetLast < timer_Accel_GetDelay*1000UL && timer_Accel_Start == 1 )
+	if ( ACCEL && TIME - accel_Timer_GetLast < accel_Timer_GetDelay*1000UL && accel_Timer_Start == 1 )
 	{
 		Serial.println("ALARM");
 		GLOBAL_LAST_CHECK = TIME;
 		APP_MODE = 4;
 
-	} else if( TIME - timer_Accel_GetLast > timer_Accel_GetDelay*1000UL && timer_Accel_Start == 1 )
+	} else if( TIME - accel_Timer_GetLast > accel_Timer_GetDelay*1000UL && accel_Timer_Start == 1 )
 	{
-		timer_Accel_Start = 0;
+		accel_Timer_Start = 0;
 	}
 
 
-	if ( ACCEL && timer_Accel_Start == 0 ) {
+	if ( ACCEL && accel_Timer_Start == 0 ) {
 		
-		timer_Accel_GetLast = TIME;
-		timer_Accel_Start = 1;
+		accel_Timer_GetLast = TIME;
+		accel_Timer_Start = 1;
 
-		trigger_Alarm();
+		// trigger_Alarm();
+		digitalWrite( ALARM_PIN, HIGH );
+		delay(250);
+		digitalWrite( ALARM_PIN, LOW );
+
 		Serial.println("CHIRP");
 	}
 }
@@ -303,7 +305,7 @@ void manageMode_ALERT()
 	set_HardwareMode(0);
 	
 	if( !ALARM ) trigger_Alarm();
-	//ACCEL = check_Accel();
+	ALARM = 1;
 
 	if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
 	{
@@ -359,12 +361,12 @@ int get_GPS()
 
 		Serial.println("Distance from HOME: " + String(dist));
 
-		timer_getGPS_GetLast = TIME;
+		gps_Timer_GetLast = TIME;
 
 		int gps = ( dist < gps_GeoFence_Radius) ? 1 : 0;
 		return gps;
 
-	} else if ( TIME - timer_getGPS_GetLast > timer_getGPS_GetTimeout*1000UL ) {
+	} else if ( TIME - gps_Timer_GetLast > gps_Timer_GetTimeout*1000UL ) {
 
 		// Particle.publish("t-notify", "NO GPS", 60, PRIVATE);
 
@@ -405,10 +407,10 @@ int check_Accel()
 	
 	if ( accel_Current > accel_Threshold ) { // reduces accelerometer bounce
 
-		if( TIME - timer_Accel_SampleStart > timer_Accel_SampleEnd )
+		if( TIME - accel_Timer_SampleStart > accel_Timer_SampleEnd )
 		{
-			Serial.println("BUMP!");
-			timer_Accel_SampleStart = TIME;
+			// Serial.println("BUMP!");
+			accel_Timer_SampleStart = TIME;
 			return accel = 1;
 			
 		}
@@ -464,9 +466,9 @@ void check_BatteryLevel()
 {
 	batt_CurrentLevel = fuel.getSoC();
 
-	if( batt_CurrentLevel <= batt_AlertLevel && TIME - timer_GetBatt_GetLast > timer_getBatt_GetDelay*60000UL)
+	if( batt_CurrentLevel <= batt_AlertLevel && TIME - batt_Timer_GetLast > batt_Timer_GetDelay*60000UL)
 	{
-		timer_GetBatt_GetLast = TIME;
+		batt_Timer_GetLast = TIME;
 		// Particle.publish("t-notify", "LOW BATTERY", 60, PRIVATE);
 	}
 }
@@ -530,6 +532,7 @@ int get_Batt_Voltage( String command )
 void trigger_Alarm()
 {
 	ALARM = 1;
+	digitalWrite( ALARM_PIN, HIGH );
 }
 
 
@@ -568,9 +571,9 @@ void blink_RGB( String color, int brightness, int rate, int duration )
 			tick = 0;
 			
 			if(led) {
-				// RGB.color(0,0,255);
+				// RGB.rightness(0); // NOT WORKING
 			} else {
-				// RGB.brightness(255);
+				// RGB.brightness(255); // NOT WORKING
 			}
 
 			led = !led;
@@ -608,9 +611,9 @@ void blink_RGB( String color, int brightness, int rate, int duration )
 //****************************************************************/
 // WATCHDOG TIMER / SYSTEM RESET / Avoids stack overflow
 //****************************************************************/
-void timer_WatchDog()
+void WATCHDOG_Timer()
 {
-	if ( TIME - timer_WatchDog_ResetLast > timer_WatchDog_ResetDelay*60000UL*60000UL ) {
+	if ( TIME - WATCHDOG_Timer_ResetLast > WATCHDOG_Timer_ResetDelay*60000UL*60000UL ) {
 
 		System.reset();
 
