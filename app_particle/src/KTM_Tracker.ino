@@ -57,7 +57,7 @@ float gps_TrackerPos[2];                             // Array used to store long
 long gps_Timer_GetLast = 0;                       // TIME since last GPS reset
 long gps_Timer_GetTimeout = 60;                   // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                       // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 1;                       // Geo-fence radius in meters
+int gps_GeoFence_Radius = 100;                       // Geo-fence radius in meters
 bool GPS_ON = 0;
 
 // ACCELEROMETER VARS
@@ -445,6 +445,7 @@ void set_HardwareMode(int hardware)
 				Serial.println("Hardware - ACCEL");
 				tracker.gpsOff();
 				GPS_ON = 0;
+				delay(250);
 				tracker.begin();
 				
 				break;
