@@ -42,6 +42,9 @@ bool POWER = 0;                                      // POWER - 1:TRUE (vehicle 
 bool ACCEL = 0;										 // ACCEL - 1: TRUE (threshold hit) | 2: FALSE (threshold not hit)
 bool ALARM = 0;
 
+// HARDWARE CHANGE VARS
+int HARDWARE_LAST = 1;
+
 // WATCHDOG TIMER 
 long WATCHDOG_Timer_ResetLast = 0;                   // TIME since last last system reset
 int WATCHDOG_Timer_ResetDelay = 24;                  // [x] hours until full system reset
@@ -49,9 +52,6 @@ int WATCHDOG_Timer_ResetDelay = 24;                  // [x] hours until full sys
 // HAVERSINE (distance) FORMULA
 const float earthRadius = 6378100;                   // Radius of earth in meters
 // const float PI = 3.1415926535897932384626433832795;  // Math.PI
-
-//
-int HARDWARE_LAST = 1;
 
 // GPS VARS
 float gps_HomePos[2] = { 33.773016, -118.149690 };   // long/lat of geo-fence point (HOME)
@@ -222,9 +222,7 @@ void manageMode_SLEEP()
 {
 	// Particle.publish("t-status", "SLEEP", 60, PRIVATE);
 	Serial.println("SLEEP MODE");
-
-	// if( ALARM ) kill_Alarm();
-
+	if( ALARM ) kill_Alarm();
 	blink_RGB("#7200FF", 255, 1, 5);
 
 	// delay(2000);
@@ -238,13 +236,14 @@ void manageMode_SLEEP()
 
 void manageMode_REST()
 {
-	// Particle.publish("t-status", "REST", 60, PRIVATE);
 	if( MODE_SETUP )
 	{
+		// Particle.publish("t-status", "REST", 60, PRIVATE);
 		Serial.println("REST MODE");
+		if( ALARM ) kill_Alarm();
 	}
 
-	if( ALARM ) kill_Alarm();
+
 	if ( TIME - REST_LastPub > REST_PubDelay*60000UL )
 	{
 		REST_LastPub = TIME;
@@ -274,15 +273,15 @@ void manageMode_GUARD()
 		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
 		Serial.println("GUARD MODE");
 
+		if( ALARM ) kill_Alarm();
 		set_HardwareMode(1);
 		MODE_SETUP = 0;
 	}
 
-	
+
+	ACCEL = check_Accel();
 	POWER = digitalRead( POWER_PIN );
 	if( POWER ) APP_MODE = 2; 
-	if( ALARM ) kill_Alarm();
-	ACCEL = check_Accel();
 
 
 	if ( ACCEL && TIME - accel_Timer_GetLast < accel_Timer_GetDelay*1000UL && accel_Timer_Start == 1 )
@@ -321,13 +320,12 @@ void manageMode_ALERT()
 		Serial.println("ALERT MODE");
 
 		set_HardwareMode(0);
+		if( !ALARM ) trigger_Alarm();
+		ALARM = 1;
 		MODE_SETUP = 0;
 	}
 	
 	
-	if( !ALARM ) trigger_Alarm();
-	ALARM = 1;
-
 	if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
 	{
 		ALERT_LastPub = TIME;
@@ -387,7 +385,7 @@ int get_GPS()
 
 	} else if ( TIME - gps_Timer_GetLast > gps_Timer_GetTimeout*1000UL ) {
 
-		Particle.publish("t-notify", "NO GPS", 60, PRIVATE);
+		// Particle.publish("t-notify", "NO GPS", 60, PRIVATE);
 		Serial.println("NO GPS");
 
 		delay(1000);
