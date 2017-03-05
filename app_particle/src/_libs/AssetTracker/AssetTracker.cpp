@@ -728,11 +728,11 @@ bool Adafruit_LIS3DH::begin(uint8_t i2caddr) {
   writeRegister8(LIS3DH_REG_TEMPCFG, 0xC0);
 
 
-  for (uint8_t i=0; i<0x30; i++) {
+  /*for (uint8_t i=0; i<0x30; i++) {
     Serial.print("$");
     Serial.print(i, HEX); Serial.print(" = 0x");
     Serial.println(readRegister8(i), HEX);
-  }
+  }*/
 
 
   return true;
