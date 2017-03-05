@@ -35,7 +35,7 @@ int GLOBAL_CHECK_BOOT = 1;                           // Initial app mode check (
 int DEEP_SLEEP_TIME = 120;                           // [x] minutes until it exits DEEP SLEEP MODE to check app state
 int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
 int PREV_APP_MODE;                                   // Previous APP_MODE state
-bool MODE_SETUP = 1;
+bool MODE_INIT = 1;
 
 bool GPS = 0;                                        // GPS - 1:TRUE (within geo-fence) | 2: FALSE (outside ge-fence)
 bool POWER = 0;                                      // POWER - 1:TRUE (vehicle running) | 2: FALSE (vehicle off)
@@ -65,11 +65,11 @@ bool HARWARE_GPS = 0;
 // ACCELEROMETER VARS
 int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
 int accel_Current = 0;                               // Combined accelerometer reading - current registered
-bool accel_Timer_Start = 0;
-long accel_Timer_GetLast = 0;                        // TIME since last battery level check
-long accel_Timer_GetDelay = 10;                      // Check battery level every [x] minutes
-long accel_Timer_SampleStart = 0;
-long accel_Timer_SampleEnd = 75;
+bool accel_HitTimer_Start = 0;
+long accel_HitTimer_GetLast = 0;                        // TIME since last battery level check
+long accel_HitTimer_GetDelay = 10;                      // Check battery level every [x] minutes
+long accel_HitTimer_SampleStart = 0;
+long accel_HitTimer_SampleEnd = 75;
 
 // BATTERY VARS
 int batt_AlertLevel = 20;                            // Send alert is less than [x] percentage
@@ -142,7 +142,7 @@ void loop()
 		APP_MODE != 4 ) check_StateMode();
 
 
-	if( APP_MODE != PREV_APP_MODE ) MODE_SETUP = 1;
+	if( APP_MODE != PREV_APP_MODE ) MODE_INIT = 1;
 	if( APP_MODE != PREV_APP_MODE || APP_MODE > 1 )
 	{
 		switch( APP_MODE )
@@ -236,7 +236,7 @@ void manageMode_SLEEP()
 
 void manageMode_REST()
 {
-	if( MODE_SETUP )
+	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "REST", 60, PRIVATE);
 		Serial.println("REST MODE");
@@ -268,14 +268,14 @@ void manageMode_REST()
 
 void manageMode_GUARD()
 {
-	if( MODE_SETUP )
+	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
 		Serial.println("GUARD MODE");
 
 		if( ALARM ) kill_Alarm();
 		set_HardwareMode(1);
-		MODE_SETUP = 0;
+		MODE_INIT = 0;
 	}
 
 
@@ -284,23 +284,23 @@ void manageMode_GUARD()
 	if( POWER ) APP_MODE = 2; 
 
 
-	if ( ACCEL && TIME - accel_Timer_GetLast < accel_Timer_GetDelay*1000UL && accel_Timer_Start == 1 )
+	if ( ACCEL && TIME - accel_HitTimer_GetLast < accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
 		Serial.println("ALARM");
 
 		GLOBAL_CHECK_LAST = TIME;
 		APP_MODE = 4;
 
-	} else if( TIME - accel_Timer_GetLast > accel_Timer_GetDelay*1000UL && accel_Timer_Start == 1 )
+	} else if( TIME - accel_HitTimer_GetLast > accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
-		accel_Timer_Start = 0;
+		accel_HitTimer_Start = 0;
 	}
 
 
-	if ( ACCEL && accel_Timer_Start == 0 ) {
+	if ( ACCEL && accel_HitTimer_Start == 0 ) {
 		
-		accel_Timer_GetLast = TIME;
-		accel_Timer_Start = 1;
+		accel_HitTimer_GetLast = TIME;
+		accel_HitTimer_Start = 1;
 
 		digitalWrite( ALARM_PIN, HIGH ); // <------------------------REWORK CODE
 		delay(250);
@@ -314,7 +314,7 @@ void manageMode_GUARD()
 
 void manageMode_ALERT()
 {
-	if( MODE_SETUP )
+	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "ALERT", 60, PRIVATE);
 		Serial.println("ALERT MODE");
@@ -322,7 +322,7 @@ void manageMode_ALERT()
 		set_HardwareMode(0);
 		if( !ALARM ) trigger_Alarm();
 		ALARM = 1;
-		MODE_SETUP = 0;
+		MODE_INIT = 0;
 	}
 	
 	
@@ -343,7 +343,6 @@ void manageMode_ALERT()
 		
 		// rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
 		// Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);
-
 	}
 }
 //****************************************************************/
@@ -426,11 +425,11 @@ int check_Accel()
 	
 	if ( accel_Current > accel_Threshold ) { // reduces accelerometer bounce
 
-		if( TIME - accel_Timer_SampleStart > accel_Timer_SampleEnd )
+		if( TIME - accel_HitTimer_SampleStart > accel_HitTimer_SampleEnd )
 		{
 			Serial.println("BUMP!");
 
-			accel_Timer_SampleStart = TIME;
+			accel_HitTimer_SampleStart = TIME;
 			return accel = 1;
 			
 		}
