@@ -13,54 +13,45 @@
 
 
 
-
 // DEFINITIONS
 #define TIME millis()                                // Global system run time - milliseconds
 
 
 
-
-// USER CONTROLLED VARS
-bool MASTER_ALERT = 0;                               // Boolean to force ALERT mode
-
 // PIN VARS
 int POWER_PIN = D1;									 // Pin used to determine power states from external source
-int ALARM_PIN = D2;                                  // Pin used to trigger piezo alarm
-// int WKP_PIN = A7;                                 // Pin used to used to wake tracker from SLEEP state
+int ALARM_PIN = D2;    
 
-// GLOBAL VARS
-long GLOBAL_CHECK_LAST = 0;                          // TIME since last APP_MODE check
-long GLOBAL_CHECK_LAST_DELAY = 1;                    // Check/set app mode every [x] minutes
-int GLOBAL_CHECK_BOOT = 1;                           // Initial app mode check (runs loop until it gets out of 0:BOOT mode)
-int DEEP_SLEEP_TIME = 120;                           // [x] minutes until it exits DEEP SLEEP MODE to check app state
+
 int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
-int PREV_APP_MODE;                                   // Previous APP_MODE state
+int APP_MODE_LAST;
+
+//
+bool __GPS__;
+bool __POWER__;
+bool __ACCEL__;
+bool __ALARM__;
+
+//
+bool BOOT_INIT = 1;
 bool MODE_INIT = 1;
-
-bool GPS = 0;                                        // GPS - 1:TRUE (within geo-fence) | 2: FALSE (outside ge-fence)
-bool POWER = 0;                                      // POWER - 1:TRUE (vehicle running) | 2: FALSE (vehicle off)
-bool ACCEL = 0;										 // ACCEL - 1: TRUE (threshold hit) | 2: FALSE (threshold not hit)
-bool ALARM = 0;
-
-// HARDWARE CHANGE VARS
-int HARDWARE_LAST = 1;
-
-// WATCHDOG TIMER 
-long WATCHDOG_Timer_ResetLast = 0;                   // TIME since last last system reset
-int WATCHDOG_Timer_ResetDelay = 24;                  // [x] hours until full system reset
+bool UPDATING_GPS = 0;
+bool POWER_LAST = 0;
+bool HARDWARE_MODE_LAST = 0;
+bool HARWARE_MODE = 0;
+bool POWER_MASTER = 1;
 
 // HAVERSINE (distance) FORMULA
-const float earthRadius = 6378100;                   // Radius of earth in meters
-// const float PI = 3.1415926535897932384626433832795;  // Math.PI
+const float earthRadius = 6378100;                       // Radius of earth in meters
+const float PI = 3.1415926535897932384626433832795;      // Math.PI
 
 // GPS VARS
-float gps_HomePos[2] = { 33.773016, -118.149690 };   // long/lat of geo-fence point (HOME)
-float gps_TrackerPos[2];                             // Array used to store long/lat of GPS tracker
-long gps_Timer_GetLast = 0;                          // TIME since last GPS reset
-long gps_Timer_GetTimeout = 60;                      // (if no GPS fix) [x] seconds until system reset
-long gps_SampleSize_Ticks = 5;                       // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 100;                       // Geo-fence radius in meters
-bool HARWARE_GPS = 0;
+float gps_HomePos[2] = { 33.773016, -118.149690 };       // long/lat of geo-fence point (HOME)
+float gps_TrackerPos[2];                                 // Array used to store long/lat of GPS tracker
+long gps_Timer_GetLast = 0;                              // TIME since last GPS reset
+long gps_Timer_GetTimeout = 60;                          // (if no GPS fix) [x] seconds until system reset
+long gps_SampleSize_Ticks = 5;                           // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
+int gps_GeoFence_Radius = 100	;                           // Geo-fence radius in meters
 
 // ACCELEROMETER VARS
 int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
@@ -88,12 +79,16 @@ long ALERT_PubDelay = 30;                            // Check battery level ever
 
 
 
+// WATCHDOG TIMER 
+long WATCHDOG_Timer_ResetLast = 0;                       // TIME since last last system reset
+int WATCHDOG_Timer_ResetDelay = 24;                      // [x] hours until full system reset
+
+
 
 // PARTICLE HARDWARE VARS
-AssetTracker tracker = AssetTracker();               // Particle Tracker shield
-FuelGauge fuel;                                      // LiPo Battery
-CellularSignal cell;                                 // Electron cell module
-
+AssetTracker tracker = AssetTracker();                   // Particle Tracker shield
+FuelGauge fuel;                                          // LiPo Battery
+CellularSignal cell;                                     // Electron cell module
 
 
 
@@ -102,30 +97,19 @@ void setup()
 	Serial.begin(9600);
 
 	pinMode(POWER_PIN, INPUT);
-	pinMode(ALARM_PIN, OUTPUT);
 
 	Time.zone(-8); 
   	Time.hourFormat12();
 
-	set_HardwareMode(0);
-	define_ExternalFunctions();
-
-	gps_Timer_GetLast = TIME;
-	
-	WATCHDOG_Timer();
+  	define_ExternalFunctions();
 }
-
 
 
 
 void define_ExternalFunctions()
 {
-	Particle.function( "RESET", reset_System );
-	Particle.function( "ALERT", set_Mode_ALERT );
-	Particle.function( "CELL", get_Cell_Strength );
-	Particle.function( "BATT_LEVEL", get_Batt_Level );	
-	Particle.function( "BATT_VOLTS", get_Batt_Voltage );	
-	Particle.function( "GPS_SET_HOME", set_GPS_HOME );
+	Particle.function( "POWER_ON", set_Power_On );
+	Particle.function( "POWER_OFF", set_Power_Off );
 }
 
 
@@ -133,75 +117,61 @@ void define_ExternalFunctions()
 
 void loop()
 {
-	if( HARWARE_GPS ) tracker.updateGPS();
-	if( MASTER_ALERT ) APP_MODE = 4;
-	
+	// __POWER__ = digitalRead( POWER_PIN );
+	__POWER__ = POWER_MASTER;
 
-	if( GLOBAL_CHECK_BOOT == 1 || 
-		TIME - GLOBAL_CHECK_LAST > GLOBAL_CHECK_LAST_DELAY*60000UL &&
-		APP_MODE != 4 ) check_StateMode();
+	if( HARWARE_MODE ) tracker.updateGPS();
+	if( UPDATING_GPS ) check_TrackerDistance();
 
+	manage_TrackerMode();
 
-	if( APP_MODE != PREV_APP_MODE ) MODE_INIT = 1;
-	if( APP_MODE != PREV_APP_MODE || APP_MODE > 1 )
+	if ( __POWER__ != POWER_LAST || BOOT_INIT )
 	{
-		switch( APP_MODE )
+		BOOT_INIT = 0;
+		POWER_LAST = __POWER__;
+
+		if( __POWER__ )
 		{
-			case 0 :
-				manageMode_BOOT();
-				break;
+			Serial.println("POWER CHANGE => ON");
 
-			case 1 :
-				manageMode_SLEEP();
-				break;
+			//UPDATING_GPS = 1;
+			//set_HardwareMode(1);
+			APP_MODE = 2;
 
-			case 2 :
-				manageMode_REST();
-				break;
+		} else if( !__POWER__ ) {
+			
+			Serial.println("POWER CHANGE => OFF");
 
-			case 3 :
-				manageMode_GUARD();
-				break;
+			UPDATING_GPS = 1;
+			set_HardwareMode(1);
+			check_TrackerDistance();
 
-			case 4 :
-				manageMode_ALERT();
-				break;
+		} else {
+			
+			// CANNOT GET __POWER__ : Notify
 		}
-
-		PREV_APP_MODE = APP_MODE;
 	}
-
 }
-//****************************************************************/
-//****************************************************************/	
 
 
 
-
-//****************************************************************/
-// StateMode FUNCTIONS
-//****************************************************************/
-void check_StateMode()
+void check_TrackerDistance()
 {
-	if ( tracker.gpsFix() ) {
+	if( tracker.gpsFix() )
+	{
+		Serial.println("GPS | Getting Tracker Position");
+		
+		__GPS__ = get_GPS();
+		UPDATING_GPS = 0;
 
-		GLOBAL_CHECK_BOOT = 0;
-		GLOBAL_CHECK_LAST = TIME;
+		if( __GPS__ ) {
+			Serial.println("GPS | State => 1 | Within Radius");
+			
+			APP_MODE = 1;
 
-		POWER = digitalRead( POWER_PIN );
-		GPS = get_GPS();
+		} else {
+			Serial.println("GPS | State => 2 | Outside Radius");
 
-		check_BatteryLevel();
-
-		if ( GPS && POWER ) {			// HOME || ON - REST
-			APP_MODE = 2;
-		} else if ( !GPS && POWER ) {	// NOT HOME || ON - REST
-			APP_MODE = 2;
-		} else if ( GPS && !POWER ) {	// HOME || OFF - SLEEP
-			APP_MODE = 1;	
-		} else if ( !GPS && !POWER ) {	// NOT HOME || OFF - GUARD
-			APP_MODE = 3;
-		} else {						// DEFAULT - GUARD
 			APP_MODE = 3;
 		}
 	}
@@ -210,41 +180,92 @@ void check_StateMode()
 
 
 
-void manageMode_BOOT()
+void check_TrackerPosition()
 {
-	// Particle.publish("t-status", "BOOT", 60, PRIVATE);
-	Serial.println("BOOT MODE");
+
 }
 
 
 
-void manageMode_SLEEP()
+void manage_TrackerMode()
 {
-	// Particle.publish("t-status", "SLEEP", 60, PRIVATE);
-	Serial.println("SLEEP MODE");
-	if( ALARM ) kill_Alarm();
-	blink_RGB("#7200FF", 255, 1, 5);
+	if( APP_MODE != APP_MODE_LAST ) MODE_INIT = 1;
 
-	// delay(2000);
-	System.sleep( WKP, FALLING /*, DEEP_SLEEP_TIME*60000UL*/ );
+	switch( APP_MODE )
+	{
+		case 0 :
+			trackerMode_BOOT();
+			break;
 
-	// delay(2000);
-	System.reset();
+		case 1 :
+			trackerMode_SLEEP();
+			break;
+
+		case 2 :
+			trackerMode_REST();
+			break;
+
+		case 3 :
+			trackerMode_GUARD();
+			break;
+
+		case 4 :
+			trackerMode_ALERT();
+			break;
+	}
+
+	APP_MODE_LAST = APP_MODE;
 }
 
 
 
-void manageMode_REST()
+void trackerMode_BOOT()
 {
 	if( MODE_INIT )
 	{
-		// Particle.publish("t-status", "REST", 60, PRIVATE);
+		MODE_INIT = 0;
+
+		Serial.println("BOOT MODE");
+		
+		blink_RGB("#FFFF00", 255, 1, 5);
+	}	
+}
+
+
+
+void trackerMode_SLEEP()
+{
+	if( MODE_INIT )
+	{
+		MODE_INIT = 0;
+		
+		Serial.println("SLEEP MODE");
+		
+		blink_RGB("#7200FF", 255, 1, 5);
+		
+		delay(500);
+		System.sleep( WKP, FALLING /*, DEEP_SLEEP_TIME*60000UL*/ );
+
+		delay(500);
+		System.reset();
+	}	
+}
+
+
+
+void trackerMode_REST()
+{
+	if( MODE_INIT )
+	{
+		MODE_INIT = 0;
+		
 		Serial.println("REST MODE");
-		if( ALARM ) kill_Alarm();
+
+		blink_RGB("#0000FF", 255, 1, 5);
 	}
 
 
-	if ( TIME - REST_LastPub > REST_PubDelay*60000UL )
+	/*if ( TIME - REST_LastPub > REST_PubDelay*60000UL )
 	{
 		REST_LastPub = TIME;
 
@@ -258,37 +279,30 @@ void manageMode_REST()
 
 			++i;
 		}	
-		
-		/*rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
-		Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);*/
-	}
+	}*/
 }
 
 
 
-void manageMode_GUARD()
+void trackerMode_GUARD()
 {
 	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
 		Serial.println("GUARD MODE");
 
-		if( ALARM ) kill_Alarm();
-		set_HardwareMode(1);
+		set_HardwareMode(0);
 		MODE_INIT = 0;
 	}
 
 
-	ACCEL = check_Accel();
-	POWER = digitalRead( POWER_PIN );
-	if( POWER ) APP_MODE = 2; 
-
-
-	if ( ACCEL && TIME - accel_HitTimer_GetLast < accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
+	__ACCEL__ = check_Accel();
+	
+	if ( __ACCEL__ && TIME - accel_HitTimer_GetLast < accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
 		Serial.println("ALARM");
 
-		GLOBAL_CHECK_LAST = TIME;
+		// GLOBAL_CHECK_LAST = TIME;
 		APP_MODE = 4;
 
 	} else if( TIME - accel_HitTimer_GetLast > accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
@@ -297,31 +311,32 @@ void manageMode_GUARD()
 	}
 
 
-	if ( ACCEL && accel_HitTimer_Start == 0 ) {
+	if ( __ACCEL__ && accel_HitTimer_Start == 0 ) {
 		
+		Serial.println("CHIRP");
+
+		// GLOBAL_CHECK_LAST = TIME; 
 		accel_HitTimer_GetLast = TIME;
 		accel_HitTimer_Start = 1;
 
 		digitalWrite( ALARM_PIN, HIGH ); // <------------------------REWORK CODE
 		delay(250);
 		digitalWrite( ALARM_PIN, LOW );  // 
-
-		Serial.println("CHIRP");
 	}
 }
 
 
 
-void manageMode_ALERT()
+void trackerMode_ALERT()
 {
 	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "ALERT", 60, PRIVATE);
 		Serial.println("ALERT MODE");
 
-		set_HardwareMode(0);
-		if( !ALARM ) trigger_Alarm();
-		ALARM = 1;
+		set_HardwareMode(1);
+		// if( !ALARM ) trigger_Alarm();
+		// ALARM = 1;
 		MODE_INIT = 0;
 	}
 	
@@ -357,8 +372,6 @@ void manageMode_ALERT()
 int get_GPS()
 {	
 	if ( tracker.gpsFix() ) {
-
-		// Particle.publish("t-notify", "GPS FOUND", 60, PRIVATE);
 		
 		float dist;
 		int i = 0;
@@ -376,6 +389,7 @@ int get_GPS()
 		}
 
 		Serial.println("Distance from HOME: " + String(dist));
+		if( dist > 500000.00 ) System.reset();
 
 		gps_Timer_GetLast = TIME;
 
@@ -384,15 +398,11 @@ int get_GPS()
 
 	} else if ( TIME - gps_Timer_GetLast > gps_Timer_GetTimeout*1000UL ) {
 
-		// Particle.publish("t-notify", "NO GPS", 60, PRIVATE);
-		Serial.println("NO GPS");
-
+		blink_RGB("#FF0000", 255, 1, 5);
 		delay(1000);
 		System.reset();
-
 	}
 }
-
 
 
 
@@ -414,9 +424,8 @@ double get_Distance( float start_lat, float start_long, float end_lat, float end
 
 
 
-
 //****************************************************************/
-// EXTERNAL FUNCTIONS
+// 
 //****************************************************************/
 int check_Accel()
 {
@@ -442,64 +451,42 @@ int check_Accel()
 
 
 
-
 //****************************************************************/
 // EXTERNAL FUNCTIONS
 //****************************************************************/
 // 0:GPS | 1:ACCEL
-void set_HardwareMode(int hardware)
+void set_HardwareMode(int hardware_int)
 {
-	if( HARDWARE_LAST != hardware )
+	if( HARDWARE_MODE_LAST != hardware_int )
 	{
-		switch( hardware )
+		switch( hardware_int )
 		{
 			case 0 :
-				Serial.println("Hardware - GPS");
-
-				tracker.gpsOn();
-				HARWARE_GPS = 1;
-
-				break;
-
-			case 1 :
 				Serial.println("Hardware - ACCEL");
 
 				tracker.gpsOff();
-				HARWARE_GPS = 0;
-				
+				HARWARE_MODE = 0;
 				delay(250);
-				tracker.begin();
 				
+				tracker.begin();
+				delay(250);
+				
+				break;
+
+			case 1 :
+				Serial.println("Hardware - GPS");
+
+				tracker.gpsOn();
+				HARWARE_MODE = 1;
+
 				break;
 		}
 
-		HARDWARE_LAST = hardware;
+		HARDWARE_MODE_LAST = hardware_int;
 	}
 }
 //****************************************************************/
 //****************************************************************/	
-
-
-
-
-//****************************************************************/
-// EXTERNAL FUNCTIONS
-//****************************************************************/
-void check_BatteryLevel()
-{
-	batt_CurrentLevel = fuel.getSoC();
-
-	if( batt_CurrentLevel <= batt_AlertLevel && TIME - batt_Timer_GetLast > batt_Timer_GetDelay*60000UL)
-	{
-		//Particle.publish("t-notify", "LOW BATTERY", 60, PRIVATE);
-		Serial.println("LOW BATTERY");
-
-		batt_Timer_GetLast = TIME;
-	}
-}
-//****************************************************************/
-//****************************************************************/	
-
 
 
 
@@ -507,11 +494,11 @@ void check_BatteryLevel()
 // EXTERNAL FUNCTIONS
 //****************************************************************/
 // MANUALLY SET ALERT MODE
-int set_Mode_ALERT( String command )
+/*int set_Mode_ALERT( String command )
 {
 	MASTER_ALERT = 1;
 	return 1;
-}
+}*/
 
 // MANUALLY SET ALERT MODE
 int set_GPS_HOME( String command )
@@ -561,9 +548,21 @@ int get_Batt_Voltage( String command )
 	int battVoltage = fuel.getVCell();
 	return battVoltage;
 }
+
+
+int set_Power_On( String command )
+{
+	POWER_MASTER = 1;
+	return 1;
+}
+
+int set_Power_Off( String command )
+{
+	POWER_MASTER = 0;
+	return 0;
+}
 //****************************************************************/
 //****************************************************************/	
-
 
 
 
@@ -572,7 +571,7 @@ int get_Batt_Voltage( String command )
 //****************************************************************/
 void trigger_Alarm()
 {
-	ALARM = 1;
+	__ALARM__ = 1;
 	digitalWrite( ALARM_PIN, HIGH );
 }
 
@@ -580,7 +579,7 @@ void trigger_Alarm()
 
 void kill_Alarm()
 {
-	ALARM = 0;
+	__ALARM__ = 0;
 }
 
 
