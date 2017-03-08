@@ -292,6 +292,8 @@ void trackerMode_GUARD()
 	if( MODE_INIT )
 	{
 		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
+		Serial.println("//// ARMING DEVICE ////");
+		delay(30000);
 		Serial.println("[GUARD MODE]");
 
 		MODE_INIT = 0;
