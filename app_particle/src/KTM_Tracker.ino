@@ -22,7 +22,7 @@
 int POWER_PIN = D1;									 // Pin used to determine power states from external source
 int ALARM_PIN = D2;    
 
-
+//
 int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
 int APP_MODE_LAST;
 
@@ -39,7 +39,8 @@ bool UPDATING_GPS = 0;
 bool POWER_LAST = 0;
 bool HARDWARE_MODE_LAST = 0;
 bool HARWARE_MODE = 0;
-bool POWER_MASTER = 1;
+bool MASTER_POWER = 1;
+bool MASTER_ALERT = 0;
 
 // HAVERSINE (distance) FORMULA
 const float earthRadius = 6378100;                       // Radius of earth in meters
@@ -51,7 +52,7 @@ float gps_TrackerPos[2];                                 // Array used to store 
 long gps_Timer_GetLast = 0;                              // TIME since last GPS reset
 long gps_Timer_GetTimeout = 60;                          // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                           // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 100	;                           // Geo-fence radius in meters
+int gps_GeoFence_Radius = 1;                           // Geo-fence radius in meters
 
 // ACCELEROMETER VARS
 int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
@@ -76,8 +77,6 @@ String rest_pub = "";
 // ALERT VARS
 long ALERT_LastPub = 0;                              // TIME since last battery level check
 long ALERT_PubDelay = 30;                            // Check battery level every [x] seconds
-
-
 
 // WATCHDOG TIMER 
 long WATCHDOG_Timer_ResetLast = 0;                       // TIME since last last system reset
@@ -110,6 +109,12 @@ void define_ExternalFunctions()
 {
 	Particle.function( "POWER_ON", set_Power_On );
 	Particle.function( "POWER_OFF", set_Power_Off );
+	Particle.function( "RESET", reset_System );
+	Particle.function( "ALERT", set_Mode_ALERT );
+	Particle.function( "CELL", get_Cell_Strength );
+	Particle.function( "BATT_LEVEL", get_Batt_Level );	
+	Particle.function( "BATT_VOLTS", get_Batt_Voltage );	
+	Particle.function( "GPS_SET_HOME", set_GPS_HOME );
 }
 
 
@@ -118,8 +123,8 @@ void define_ExternalFunctions()
 void loop()
 {
 	// __POWER__ = digitalRead( POWER_PIN );
-	__POWER__ = POWER_MASTER;
-
+	__POWER__ = MASTER_POWER;
+	
 	if( HARWARE_MODE ) tracker.updateGPS();
 	if( UPDATING_GPS ) check_TrackerDistance();
 
@@ -134,8 +139,7 @@ void loop()
 		{
 			Serial.println("POWER CHANGE => ON");
 
-			//UPDATING_GPS = 1;
-			//set_HardwareMode(1);
+			set_HardwareMode(1);
 			APP_MODE = 2;
 
 		} else if( !__POWER__ ) {
@@ -144,11 +148,13 @@ void loop()
 
 			UPDATING_GPS = 1;
 			set_HardwareMode(1);
+
+			Serial.println("GPS | Getting Tracker Position");
 			check_TrackerDistance();
 
 		} else {
 			
-			// CANNOT GET __POWER__ : Notify
+			// CANNOT GET __POWER__ : Notify!
 		}
 	}
 }
@@ -159,9 +165,9 @@ void check_TrackerDistance()
 {
 	if( tracker.gpsFix() )
 	{
-		Serial.println("GPS | Getting Tracker Position");
+		Serial.println("GPS | Aquiring Signal...");
 		
-		__GPS__ = get_GPS();
+		__GPS__ = get_GPS_DIST();
 		UPDATING_GPS = 0;
 
 		if( __GPS__ ) {
@@ -170,7 +176,7 @@ void check_TrackerDistance()
 			APP_MODE = 1;
 
 		} else {
-			Serial.println("GPS | State => 2 | Outside Radius");
+			Serial.println("GPS | State => 0 | Outside Radius");
 
 			APP_MODE = 3;
 		}
@@ -189,8 +195,13 @@ void check_TrackerPosition()
 
 void manage_TrackerMode()
 {
-	if( APP_MODE != APP_MODE_LAST ) MODE_INIT = 1;
 
+	if( APP_MODE != APP_MODE_LAST )
+	{
+		MODE_INIT = 1;
+		APP_MODE_LAST = APP_MODE;
+	}
+	
 	switch( APP_MODE )
 	{
 		case 0 :
@@ -214,7 +225,7 @@ void manage_TrackerMode()
 			break;
 	}
 
-	APP_MODE_LAST = APP_MODE;
+
 }
 
 
@@ -227,7 +238,7 @@ void trackerMode_BOOT()
 
 		Serial.println("BOOT MODE");
 		
-		blink_RGB("#FFFF00", 255, 1, 5);
+		blink_RGB("#0000FF	", 255, 1, 5);
 	}	
 }
 
@@ -241,7 +252,7 @@ void trackerMode_SLEEP()
 		
 		Serial.println("SLEEP MODE");
 		
-		blink_RGB("#7200FF", 255, 1, 5);
+		blink_RGB("#551A8B", 255, 1, 5);
 		
 		delay(500);
 		System.sleep( WKP, FALLING /*, DEEP_SLEEP_TIME*60000UL*/ );
@@ -261,7 +272,7 @@ void trackerMode_REST()
 		
 		Serial.println("REST MODE");
 
-		blink_RGB("#0000FF", 255, 1, 5);
+		blink_RGB("#00FF00", 255, 1, 5);
 	}
 
 
@@ -288,21 +299,23 @@ void trackerMode_GUARD()
 {
 	if( MODE_INIT )
 	{
+		MODE_INIT = 0;
+		
 		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
 		Serial.println("GUARD MODE");
 
 		set_HardwareMode(0);
-		MODE_INIT = 0;
+
+		blink_RGB("#FFFF00", 255, 1, 5);
 	}
 
 
 	__ACCEL__ = check_Accel();
 	
+
 	if ( __ACCEL__ && TIME - accel_HitTimer_GetLast < accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
-		Serial.println("ALARM");
-
-		// GLOBAL_CHECK_LAST = TIME;
+		Serial.println("ALARM!");
 		APP_MODE = 4;
 
 	} else if( TIME - accel_HitTimer_GetLast > accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
@@ -313,15 +326,11 @@ void trackerMode_GUARD()
 
 	if ( __ACCEL__ && accel_HitTimer_Start == 0 ) {
 		
-		Serial.println("CHIRP");
-
-		// GLOBAL_CHECK_LAST = TIME; 
 		accel_HitTimer_GetLast = TIME;
 		accel_HitTimer_Start = 1;
-
-		digitalWrite( ALARM_PIN, HIGH ); // <------------------------REWORK CODE
-		delay(250);
-		digitalWrite( ALARM_PIN, LOW );  // 
+		
+		Serial.println("CHIRP!");
+		chirp_Alarm();
 	}
 }
 
@@ -331,34 +340,38 @@ void trackerMode_ALERT()
 {
 	if( MODE_INIT )
 	{
+		MODE_INIT = 0;
+		
 		// Particle.publish("t-status", "ALERT", 60, PRIVATE);
 		Serial.println("ALERT MODE");
 
 		set_HardwareMode(1);
 		// if( !ALARM ) trigger_Alarm();
 		// ALARM = 1;
-		MODE_INIT = 0;
-	}
-	
-	
-	if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
-	{
-		ALERT_LastPub = TIME;
-
-		int i = 0;
-		while( i < gps_SampleSize_Ticks ) {
-
-			delay(1000);
-
-			gps_TrackerPos[0] = tracker.readLatDeg();
-		    gps_TrackerPos[1] = tracker.readLonDeg();
-
-			++i;
-		}	
 		
-		// rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
-		// Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);
+		blink_RGB("#FF0000", 255, 1, 5);
+
 	}
+	
+	
+	// if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
+	// {
+	// 	ALERT_LastPub = TIME;
+
+	// 	int i = 0;
+	// 	while( i < gps_SampleSize_Ticks ) {
+
+	// 		delay(1000);
+
+	// 		gps_TrackerPos[0] = tracker.readLatDeg();
+	// 	    gps_TrackerPos[1] = tracker.readLonDeg();
+
+	// 		++i;
+	// 	}	
+		
+	// 	// rest_pub += String::format("{\"l\":%.5f,\"L\":%.5f}",gps_TrackerPos[0],gps_TrackerPos[1]);
+	// 	// Particle.publish("REST", "["+rest_pub+"]", 60, PRIVATE);
+	// }
 }
 //****************************************************************/
 //****************************************************************/	
@@ -369,15 +382,16 @@ void trackerMode_ALERT()
 //****************************************************************/
 // GPS FUNCTIONS
 //****************************************************************/
-int get_GPS()
+int get_GPS_DIST()
 {	
 	if ( tracker.gpsFix() ) {
 		
 		float dist;
-		int i = 0;
+		int i = gps_SampleSize_Ticks;
 
-		while( i < gps_SampleSize_Ticks ) {
+		while( i > 0 ) {
 
+			Serial.println(String(i)+"...");
 			delay(1000);
 
 			gps_TrackerPos[0] = tracker.readLatDeg();
@@ -385,7 +399,7 @@ int get_GPS()
 
 		    dist = get_Distance( gps_HomePos[0], gps_HomePos[1], gps_TrackerPos[0], gps_TrackerPos[1] );
 
-			++i;
+			--i;
 		}
 
 		Serial.println("Distance from HOME: " + String(dist));
@@ -436,7 +450,7 @@ int check_Accel()
 
 		if( TIME - accel_HitTimer_SampleStart > accel_HitTimer_SampleEnd )
 		{
-			Serial.println("BUMP!");
+			Serial.println("-----------x BUMP");
 
 			accel_HitTimer_SampleStart = TIME;
 			return accel = 1;
@@ -462,7 +476,7 @@ void set_HardwareMode(int hardware_int)
 		switch( hardware_int )
 		{
 			case 0 :
-				Serial.println("Hardware - ACCEL");
+				Serial.println("Hardware | ACCEL");
 
 				tracker.gpsOff();
 				HARWARE_MODE = 0;
@@ -474,7 +488,7 @@ void set_HardwareMode(int hardware_int)
 				break;
 
 			case 1 :
-				Serial.println("Hardware - GPS");
+				Serial.println("Hardware | GPS");
 
 				tracker.gpsOn();
 				HARWARE_MODE = 1;
@@ -493,17 +507,47 @@ void set_HardwareMode(int hardware_int)
 //****************************************************************/
 // EXTERNAL FUNCTIONS
 //****************************************************************/
-// MANUALLY SET ALERT MODE
-/*int set_Mode_ALERT( String command )
+void check_BatteryLevel()
+{
+	batt_CurrentLevel = fuel.getSoC();
+
+	if( batt_CurrentLevel <= batt_AlertLevel && TIME - batt_Timer_GetLast > batt_Timer_GetDelay*60000UL)
+	{
+		//Particle.publish("t-notify", "LOW BATTERY", 60, PRIVATE);
+		Serial.println("LOW BATTERY");
+
+		batt_Timer_GetLast = TIME;
+	}
+}
+//****************************************************************/
+//****************************************************************/	
+
+
+
+//****************************************************************/
+// EXTERNAL FUNCTIONS
+//****************************************************************/
+int set_Power_On( String command )
+{
+	MASTER_POWER = 1;
+	return 1;
+}
+
+int set_Power_Off( String command )
+{
+	MASTER_POWER = 0;
+	return 0;
+}
+
+int set_Mode_ALERT( String command )
 {
 	MASTER_ALERT = 1;
 	return 1;
-}*/
+}
 
-// MANUALLY SET ALERT MODE
 int set_GPS_HOME( String command )
 {
-	int set_gps = get_GPS();
+	int set_gps = get_GPS_DIST();
 	
 	while(set_gps != 1)
 	{
@@ -516,16 +560,12 @@ int set_GPS_HOME( String command )
 	return 1;
 }
 
-
-// MANUALLY SET ALERT MODE
 int reset_System( String command )
 {
 	System.reset();
 	return 1;
 }
 
-
-// GET CELLULAR SIGNAL STRENGTH
 int get_Cell_Strength( String command )
 {
 	cell = Cellular.RSSI();
@@ -533,33 +573,16 @@ int get_Cell_Strength( String command )
 	return 1;
 }
 
-
-// GET BATTERY LEVEL
-int get_Batt_Level( String command )
+float get_Batt_Level( String command )
 {
 	int battLevel = fuel.getSoC();
 	return battLevel;
 }
 
-
-// GET BATTERY VOLTAGE
-int get_Batt_Voltage( String command )
+float get_Batt_Voltage( String command )
 {
 	int battVoltage = fuel.getVCell();
 	return battVoltage;
-}
-
-
-int set_Power_On( String command )
-{
-	POWER_MASTER = 1;
-	return 1;
-}
-
-int set_Power_Off( String command )
-{
-	POWER_MASTER = 0;
-	return 0;
 }
 //****************************************************************/
 //****************************************************************/	
@@ -583,6 +606,12 @@ void kill_Alarm()
 }
 
 
+void chirp_Alarm()
+{
+	digitalWrite( ALARM_PIN, HIGH ); // <------------------------REWORK CODE
+	delay(250);
+	digitalWrite( ALARM_PIN, LOW );  // 
+}
 
 
 void blink_RGB( String color, int brightness, int rate, int duration )
@@ -598,7 +627,7 @@ void blink_RGB( String color, int brightness, int rate, int duration )
 
 	RGB.color(r, g, b);	
 
-	long last = TIME;
+	/*long last = TIME;
 	long tick = 0;
 	bool led = 1;
 	
@@ -617,10 +646,10 @@ void blink_RGB( String color, int brightness, int rate, int duration )
 		}
 
 		++tick;
-	}
+	}*/
 
-	delay(10);
-	RGB.control(false);
+	/*delay(10);
+	RGB.control(false);*/
 }
 //****************************************************************/
 //****************************************************************/	
