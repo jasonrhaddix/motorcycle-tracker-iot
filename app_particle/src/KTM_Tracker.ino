@@ -100,6 +100,7 @@ void setup()
 	Serial.begin(9600);
 
 	pinMode(POWER_PIN, INPUT);
+	pinMode(ALARM_PIN, OUTPUT);
 
 	Time.zone(-8); 
   	Time.hourFormat12();
