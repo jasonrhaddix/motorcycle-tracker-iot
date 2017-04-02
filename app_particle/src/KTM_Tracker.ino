@@ -56,7 +56,7 @@ float gps_TrackerPos[2];                                 // Array used to store 
 long gps_Timer_GetLast = 0;                              // TIME since last GPS reset
 long gps_Timer_GetTimeout = 60;                          // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                           // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 100;                           // Geo-fence radius in meters
+int gps_GeoFence_Radius = 1;                           // Geo-fence radius in meters
 
 // ACCELEROMETER VARS
 int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
@@ -163,8 +163,8 @@ void define_ExternalFunctions()
 
 void loop()
 {
-	// __POWER__ = digitalRead( POWER_PIN );
-	__POWER__ = 1;
+	__POWER__ = digitalRead( POWER_PIN );
+	// __POWER__ = 1;
 	
 	
 	if( HARWARE_MODE ) tracker.updateGPS();
@@ -431,7 +431,7 @@ void publish_GPS_POS()
 		}
 
 		gps_pub = String::format("{\"t\":%d,\"l\":%.5f,\"L\":%.5f}","now",gps_TrackerPos[0],gps_TrackerPos[1]);
-		Particle.publish("t-pos", "["+gps_pub+"]", 60, PRIVATE);
+		// Particle.publish("t-pos", "["+gps_pub+"]", 60, PRIVATE);
 
 
 	}
