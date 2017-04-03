@@ -9,31 +9,30 @@
 /*****************************************************************/
 
 #include "_libs/AssetTracker/AssetTracker.h"
-// #include "_libs/Adafruit/NeoPixel/neopixel.h"
-#include "_libs/Adafruit/Display/Adafruit_GFX.h"
-#include "_libs/Adafruit/Display/Adafruit_SSD1306.h"
 #include "math.h"
 
 
 
+
 // DEFINITIONS
-#define TIME millis()                                // Global system run time - milliseconds
-#define OLED_RESET D2
+#define TIME millis()                                   // Global system run time - milliseconds
+
+
 
 
 // PIN VARS
-int POWER_PIN = D3;									 // Pin used to determine power states from external source
-int ALARM_PIN = D4;    
+int POWER_PIN = D3;									    // Pin used to determine power states from external source
+int ALARM_PIN = D4;                                     // Pin used for triggering alarm
 
-//
-int APP_MODE = 0;                                    // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
-int APP_MODE_LAST;
+// APP STATE VARS
+int APP_MODE = 0;                                       // 0:BOOT / 1:SLEEP / 2: REST / 3: GUARD / 4:ALERT 
+int APP_MODE_LAST;                                      // hold last app state to detect change 
 
-//
-bool __GPS__;
-bool __POWER__;
-bool __ACCEL__;
-bool __ALARM__;
+// TRACKER VARS
+bool __GPS__;                                           // GPS   | 0: outside home radius          | 1: within home radius
+bool __POWER__;                                         // POWER | 0: doesn't have external power  | 1: has external power
+bool __ACCEL__;                                         // ACCEL | 0: below accel threshold        | 1: above accel threshold - TRIGGERED
+bool __ALARM__;                                         // ALARM | 0: alarm currently off          | 1: alarm currently off 
 
 //
 bool BOOT_INIT = 1;
@@ -53,54 +52,42 @@ const float PI = 3.1415926535897932384626433832795;      // Math.PI
 // GPS VARS
 float gps_HomePos[2] = { 33.773016, -118.149690 };       // long/lat of geo-fence point (HOME)
 float gps_TrackerPos[2];                                 // Array used to store long/lat of GPS tracker
-long gps_Timer_GetLast = 0;                              // TIME since last GPS reset
+long gps_Timer_GetLast = 0;                              // TIME of last GPS reset
 long gps_Timer_GetTimeout = 60;                          // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                           // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 1;                           // Geo-fence radius in meters
+int gps_GeoFence_Radius = 1;                             // Geo-fence radius in meters
+// String gps_pub = "";									 // GPS publish string
 
 // ACCELEROMETER VARS
-int accel_Threshold = 9000;                          // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
-int accel_Current = 0;                               // Combined accelerometer reading - current registered
-bool accel_HitTimer_Start = 0;
-long accel_HitTimer_GetLast = 0;                        // TIME since last battery level check
-long accel_HitTimer_GetDelay = 10;                      // Check battery level every [x] minutes
-long accel_HitTimer_SampleStart = 0;
-long accel_HitTimer_SampleEnd = 75;
+int accel_Threshold = 9000;                              // Threshold to trigger ALERT mode. 9000 is VERY sensitive, 12000 will detect small bumps
+int accel_Current = 0;                                   // Combined accelerometer reading - current registered
+bool accel_HitTimer_Start = 0;							 // Determines if hit timer has started
+long accel_HitTimer_GetLast = 0;                         // Starting point value for hit timer
+long accel_HitTimer_GetDelay = 10;                       // [x] seconds to detect a second hit
+long accel_HitTimer_SampleStart = 0;					 // Sample hit timer start | used to avoid accelerometer bounce
+long accel_HitTimer_SampleEnd = 75;						 // Sample hit timer end | used to avoid accelerometer bounce
 
 // BATTERY VARS
-int batt_AlertLevel = 20;                            // Send alert is less than [x] percentage
-int batt_CurrentLevel;                               // Current battery level
-int batt_Timer_GetLast = 0;						     //
-int batt_Timer_GetDelay = 15;					     //
+int batt_CurrentLevel;                                   // Current battery level
+int batt_AlertLevel = 20;                                // Send alert is less than [x] percentage
+int batt_Timer_GetLast = 0;						         // TIME of last battery check
+int batt_Timer_GetDelay = 15;					         // [x] minutes until next battery check
 
 // REST VARS
-long REST_LastPub = 0;                               // TIME since last battery level check
-long REST_PubDelay = 5;                              // Check battery level every [x] minutes
-String gps_pub = "";
+long REST_PublishLast = 0;                               // TIME of last publish in REST mode
+long REST_PublishDelay = 5;                              // [x] minutes until next REST publish
 
 // ALERT VARS
-long ALERT_LastPub = 0;                              // TIME since last battery level check
-long ALERT_PubDelay = 30;                            // Check battery level every [x] seconds
+long ALERT_PublishLast = 0;                              // TIME of last publish in ALERT mode
+long ALERT_PublishDelay = 30;                            // [x] minutes until next ALERT publish
 
-long alarm_Timer_Last = 0;
-
-long display_Timer_GetLast = 0;                              // TIME since last GPS reset
+//
+long display_Timer_GetLast = 0;                          // TIME of last GPS reset
 long display_Timer_GetDelay = 1;   
 
-
 // WATCHDOG TIMER 
-long WATCHDOG_Timer_ResetLast = 0;                       // TIME since last last system reset
+long WATCHDOG_Timer_ResetLast = 0;                       // TIME of last last system reset
 int WATCHDOG_Timer_ResetDelay = 24;                      // [x] hours until full system reset
-
-
-
-String STATUS_STR    = " --BOOT-- ";
-String GPS_STR       = "GPS : --";
-String DISTANCE_STR  = "DISTANCE : --";
-String POWER_STATE   = "POWER : --";
-String DEVICE_STR    = "B:100% | C:-120dBm";
-String DIVIDER_STR   = "---------------------";
-String PROCESS_STR   = "";
 
 
 
@@ -109,16 +96,8 @@ String PROCESS_STR   = "";
 AssetTracker tracker = AssetTracker();                   // Particle Tracker shield
 FuelGauge fuel;                                          // LiPo Battery
 CellularSignal cell;                                     // Electron cell module
-Adafruit_SSD1306 display(OLED_RESET);
-
-Timer timer_displayStatus(200, displayStatus);
-// Timer timer_armDevice(30000, displayStatus);
 
 
-
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
-#endif
 
 
 void setup()
@@ -132,16 +111,6 @@ void setup()
   	Time.hourFormat12();
 
   	define_ExternalFunctions();
-
-  	// text display tests
-	display.begin(SSD1306_SWITCHCAPVCC, 0x3D);  // initialize with the I2C addr 0x3D (for the 128x64)
-	
-	display.clearDisplay();
-	display.setTextSize(1);
-	display.setTextColor(WHITE);
-
-	timer_displayStatus.start();	
-
 }
 
 
@@ -164,8 +133,6 @@ void define_ExternalFunctions()
 void loop()
 {
 	__POWER__ = digitalRead( POWER_PIN );
-	// __POWER__ = 1;
-	
 	
 	if( HARWARE_MODE ) tracker.updateGPS();
 	if( UPDATING_TRACKER_DIST ) check_TrackerDistance();
@@ -180,21 +147,13 @@ void loop()
 
 		if( __POWER__ )
 		{
-			// Serial.println("POWER CHANGE => ON");
-
 			set_HardwareMode(1);
 			APP_MODE = 2;
-			POWER_STATE = "POWER : ON";
 
 		} else if( !__POWER__ ) {
 			
-			// Serial.println("POWER CHANGE => OFF");
-
 			UPDATING_TRACKER_DIST = 1;
 			set_HardwareMode(1);
-
-			POWER_STATE = "POWER : OFF";
-			PROCESS_STR = "/// GPS POS... ///";
 
 			check_TrackerDistance();
 
@@ -211,19 +170,15 @@ void check_TrackerDistance()
 {
 	if( tracker.gpsFix() )
 	{
-		PROCESS_STR = "/// GPS SIGNAL... ///";
-		
 		__GPS__ = get_GPS_Distance();
 		UPDATING_TRACKER_DIST = 0;
 
 		if( __GPS__ ) {
 			
-			Serial.println("GPS | State => 1 | Within Radius");
 			APP_MODE = 1;
 
 		} else {
 
-			Serial.println("GPS | State => 0 | Outside Radius");
 			APP_MODE = 3;
 		}
 	}
@@ -272,11 +227,6 @@ void trackerMode_BOOT()
 	if( MODE_INIT )
 	{
 		MODE_INIT = 0;
-
-		// Serial.println("[BOOT MODE]");
-		STATUS_STR = " --BOOT-- ";
-		
-		blink_RGB("#0000FF", 255, 1, 5);
 	}	
 }
 
@@ -286,12 +236,8 @@ void trackerMode_SLEEP()
 {
 	if( MODE_INIT )
 	{
-		// Serial.println("[SLEEP MODE]");
-		STATUS_STR = " --SLEEP-- ";
-		
 		MODE_INIT = 0;
 		
-		blink_RGB("#551A8B", 255, 1, 5);
 		if( __ALARM__ ) trigger_Alarm(0);
 
 		delay(500);
@@ -308,12 +254,8 @@ void trackerMode_REST()
 {
 	if( MODE_INIT )
 	{
-		// Serial.println("[REST MODE]");
-		STATUS_STR = " --REST-- ";
-		
 		MODE_INIT = 0;
 
-		blink_RGB("#00FF00", 255, 1, 5);
 		if( __ALARM__ ) trigger_Alarm(0);
 
 		UPDATING_TRACKER_POS = 1;
@@ -321,9 +263,9 @@ void trackerMode_REST()
 	}
 
 
-	if ( TIME - REST_LastPub > REST_PubDelay*60000UL )
+	if ( TIME - REST_PublishLast > REST_PublishDelay*60000UL )
 	{
-		REST_LastPub = TIME;
+		REST_PublishLast = TIME;
 		UPDATING_TRACKER_POS = 1;
 		publish_GPS_POS();
 	}
@@ -335,20 +277,11 @@ void trackerMode_GUARD()
 {
 	if( MODE_INIT )
 	{
-		// Particle.publish("t-status", "GUARD", 60, PRIVATE);
-		// Serial.println("//// ARMING DEVICE ////");
-		PROCESS_STR = "/// ARMING DEVICE ///";
-
 		delay(2000);
 		
-		STATUS_STR = " --GUARD-- ";
-		// Serial.println("[GUARD MODE]");
-
 		MODE_INIT = 0;
 		set_HardwareMode(0);
-		blink_RGB("#FFA500", 255, 1, 5);
 	}
-
 
 	__ACCEL__ = check_Accel();
 	
@@ -356,15 +289,15 @@ void trackerMode_GUARD()
 	if ( __ACCEL__ && TIME - accel_HitTimer_GetLast < accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
 		APP_MODE = 4;
-
-	} else if( TIME - accel_HitTimer_GetLast > accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
+	} 
+		else if( TIME - accel_HitTimer_GetLast > accel_HitTimer_GetDelay*1000UL && accel_HitTimer_Start == 1 )
 	{
 		accel_HitTimer_Start = 0;
 	}
 
 
-	if ( __ACCEL__ && accel_HitTimer_Start == 0 ) {
-		
+	if ( __ACCEL__ && accel_HitTimer_Start == 0 )
+	{	
 		accel_HitTimer_GetLast = TIME;
 		accel_HitTimer_Start = 1;
 		
@@ -378,15 +311,10 @@ void trackerMode_ALERT()
 {
 	if( MODE_INIT )
 	{
-		// Particle.publish("t-status", "ALERT", 60, PRIVATE);
-		// Serial.println("[ALERT MODE]");
-		STATUS_STR = " --ALERT-- ";
-		PROCESS_STR = "----> YOU'RE FUCKED!!";
-
 		MODE_INIT = 0;
 		if( !__ALARM__ ) trigger_Alarm(1);
+		
 		set_HardwareMode(1);
-		blink_RGB("#FF0000", 255, 1, 5);
 		
 		UPDATING_TRACKER_POS = 1;
 		publish_GPS_POS();
@@ -394,9 +322,9 @@ void trackerMode_ALERT()
 	}
 	
 	
-	if ( TIME - ALERT_LastPub > ALERT_PubDelay*1000UL )
+	if ( TIME - ALERT_PublishLast > ALERT_PublishDelay*1000UL )
 	{
-		ALERT_LastPub = TIME;
+		ALERT_PublishLast = TIME;
 		UPDATING_TRACKER_POS = 1;
 		publish_GPS_POS();
 		
@@ -415,8 +343,6 @@ void publish_GPS_POS()
 {
 	if( tracker.gpsFix() )
 	{
-		GPS_STR = "GPS : AQUIRED";
-
 		UPDATING_TRACKER_POS = 0;
 
 		int i = 0;
@@ -430,10 +356,8 @@ void publish_GPS_POS()
 			++i;
 		}
 
-		gps_pub = String::format("{\"t\":%d,\"l\":%.5f,\"L\":%.5f}","now",gps_TrackerPos[0],gps_TrackerPos[1]);
+		// gps_pub = String::format("{\"t\":%d,\"l\":%.5f,\"L\":%.5f}","now",gps_TrackerPos[0],gps_TrackerPos[1]);
 		// Particle.publish("t-pos", "["+gps_pub+"]", 60, PRIVATE);
-
-
 	}
 }
 
@@ -441,15 +365,12 @@ void publish_GPS_POS()
 int get_GPS_Distance()
 {	
 	if ( tracker.gpsFix() ) {
-	    
-	    GPS_STR = "GPS : AQUIRED";
-		
+	  	
 		int dist;
 		int i = gps_SampleSize_Ticks;
 
 		while( i > 0 ) {
 
-			Serial.println( String(i)+"..." );
 			delay(1000);
 
 			gps_TrackerPos[0] = tracker.readLatDeg();
@@ -462,10 +383,6 @@ int get_GPS_Distance()
 			--i;
 		}
 
-		// Serial.println("Distance from HOME: " + String(dist));
-
-		DISTANCE_STR = "DISTANCE : " + String(dist) + "m";
-		
 		if( dist > 500000.00 ) System.reset();
 
 		gps_Timer_GetLast = TIME;
@@ -475,7 +392,6 @@ int get_GPS_Distance()
 
 	} else if ( TIME - gps_Timer_GetLast > gps_Timer_GetTimeout*1000UL ) {
 
-		blink_RGB("#FF0000", 255, 1, 5);
 		delay(1000);
 		System.reset();
 	}
@@ -513,8 +429,6 @@ int check_Accel()
 
 		if( TIME - accel_HitTimer_SampleStart > accel_HitTimer_SampleEnd )
 		{
-			Serial.println("*** BUMP ***");
-
 			accel_HitTimer_SampleStart = TIME;
 			return accel = 1;
 			
@@ -539,8 +453,7 @@ void set_HardwareMode(int hardware_int)
 		switch( hardware_int )
 		{
 			case 0 :
-				// Serial.println("Hardware => ACCEL");
-				PROCESS_STR = "STARTING => ACCEL";
+				
 				tracker.gpsOff();
 				HARWARE_MODE = 0;
 				delay(250);
@@ -551,9 +464,7 @@ void set_HardwareMode(int hardware_int)
 				break;
 
 			case 1 :
-				// Serial.println("Hardware => GPS");
-				PROCESS_STR = "STARTING => GPS";
-
+				
 				tracker.gpsOn();
 				HARWARE_MODE = 1;
 
@@ -571,50 +482,40 @@ void set_HardwareMode(int hardware_int)
 //****************************************************************/
 // EXTERNAL FUNCTIONS
 //****************************************************************/
+void trigger_Alarm( char alarmMode )
+{
+	switch( alarmMode )
+	{
+		case 0 :
+			// ALARM OFF
+			digitalWrite( ALARM_PIN, LOW );
+			__ALARM__ = 0;
+			break;
+
+		case 1 :
+			// ALARM ON
+			digitalWrite( ALARM_PIN, HIGH );
+			__ALARM__ = 1;
+			break;
+
+		case 2 :
+			// ALARM CHIRP
+			digitalWrite( ALARM_PIN, HIGH );
+			delay(100);
+			digitalWrite( ALARM_PIN, LOW );
+			break;
+	}
+}
+
+
 void check_BatteryLevel()
 {
 	batt_CurrentLevel = fuel.getSoC();
 
 	if( batt_CurrentLevel <= batt_AlertLevel && TIME - batt_Timer_GetLast > batt_Timer_GetDelay*60000UL)
 	{
-		//Particle.publish("t-notify", "LOW BATTERY", 60, PRIVATE);
-		Serial.println("!!! LOW BATTERY !!!");
-
 		batt_Timer_GetLast = TIME;
 	}
-}
-
-
-void displayStatus()
-{
-	display.clearDisplay();
-	
-	display.setCursor(0,0);
-	display.print("STATUS : ");
-	display.setTextColor(BLACK, WHITE); 
-	display.print(STATUS_STR);
-	display.setTextColor(WHITE);
-
-	display.setCursor(0,10);
-	display.println(GPS_STR);
-
-	display.setCursor(0,19);
-	display.println(DISTANCE_STR);
-
-	display.setCursor(0,28);
-	display.println(POWER_STATE);
-
-	display.setCursor(0,37);
-	display.println(DEVICE_STR);
-
-	display.setCursor(0,46);
-	display.println(DIVIDER_STR);
-
-	display.setCursor(0,55);
-	display.println(PROCESS_STR);
-
-	display.display();
-
 }
 //****************************************************************/
 //****************************************************************/	
@@ -684,77 +585,6 @@ float get_Batt_Voltage( String command )
 //****************************************************************/
 //****************************************************************/	
 
-
-
-//****************************************************************/
-// UTILITY FUNCTIONS
-//****************************************************************/
-void trigger_Alarm( char alarmMode )
-{
-	switch( alarmMode )
-	{
-		case 0 :
-			Serial.println("ALARM => OFF");
-			digitalWrite( ALARM_PIN, LOW );
-			__ALARM__ = 0;
-			break;
-
-		case 1 :
-			Serial.println("ALARM => ON");
-			digitalWrite( ALARM_PIN, HIGH );
-			__ALARM__ = 1;
-			break;
-
-		case 2 :
-			Serial.println("ALARM => CHIRP");
-			digitalWrite( ALARM_PIN, HIGH );
-			delay(100);
-			digitalWrite( ALARM_PIN, LOW );
-			break;
-	}
-}
-
-
-
-void blink_RGB( String color, int brightness, int rate, int duration )
-{
-	long hex_num = (long) strtol( &color[1], NULL, 16);
-
-	int r = hex_num >> 16;
-	int g = hex_num >> 8 & 0xFF;
-	int b = hex_num & 0xFF;
-
-	RGB.control(true);
-	delay(10);
-
-	RGB.color(r, g, b);	
-
-	/*long last = TIME;
-	long tick = 0;
-	bool led = 1;
-	
-	while( TIME - last < duration*1000UL )
-	{
-		if ( tick >= 20000 / (rate/2) ) {
-			tick = 0;
-			
-			if( led ) {
-				RGB.brightness(0); // NOT WORKING
-			} else {
-				RGB.brightness(255); // NOT WORKING
-			}
-
-			led = !led;
-		}
-
-		++tick;
-	}
-
-	delay(10);
-	RGB.control(false);*/
-}
-//****************************************************************/
-//****************************************************************/	
 
 
 
