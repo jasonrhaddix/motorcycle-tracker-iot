@@ -1,0 +1,15 @@
+{
+  "event": "t-pos",
+  "url": "https://8lxxl2jvdd.execute-api.us-west-2.amazonaws.com/trackerapi/tracker-pos",
+  "requestType": "POST",
+  "headers": {
+        "x-api-key" : "aoHdwHI5SA1BL4USB79LJ8Z4fCFsKTdcaTLbW6QO"
+   },
+   "json": {
+        "operation":"",
+        "table":"",
+        "payload":"{{PARTICLE_EVENT_VALUE}}"
+    },
+  "mydevices": true,
+  "noDefaults": true
+}
