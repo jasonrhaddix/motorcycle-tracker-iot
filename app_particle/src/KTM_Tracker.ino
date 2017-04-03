@@ -376,8 +376,6 @@ int get_GPS_Distance()
 			gps_TrackerPos[0] = tracker.readLatDeg();
 		    gps_TrackerPos[1] = tracker.readLonDeg();
 
-		    // GPS_STR = "GPS : " + String(gps_TrackerPos[0]) + " | " + String(gps_TrackerPos[1]);
-
 		    dist = get_Distance( gps_HomePos[0], gps_HomePos[1], gps_TrackerPos[0], gps_TrackerPos[1] );
 
 			--i;
