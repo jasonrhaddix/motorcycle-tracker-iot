@@ -4,9 +4,57 @@
 	Motocycle / Car Tracker firmware for Particle Electron
 	(c) Copyright 2017, Jason R. Haddix
 
-*/
+
+
+
+		-- FUNCTIONS --
+			
+			GLOBAL
+				- reset app
+				- set external power manually
+				- turn on/off alarm
+
+			APP STATE
+				- set app state
+
+			GPS
+				- set new HOME position
+				- set geo-fence radius
+
+			ACCEL
+				- change threshold amount
+
+
+
+
+		-- VARIABLES --
+			
+			GLOBAL
+				- return time until next WATCHDOG reset
+
+			APP STATE
+				- return current app state (string)
+
+			GPS
+				- tracker GPS coords
+				- get geo-fence radius
+
+			ACCEL
+				- get threshold amount
+
+			BATTERY
+				- battery level (float)
+				- battery volt (float)
+			
+			CELL
+				- signal strength and quality
+
+	*/
 /*****************************************************************/
 /*****************************************************************/
+
+
+
 
 #include "_libs/AssetTracker/AssetTracker.h"
 #include "math.h"
@@ -14,7 +62,7 @@
 
 
 
-// DEFINITIONS
+// DEFINE
 #define TIME millis()                                   // Global system run time - milliseconds
 
 
@@ -50,12 +98,12 @@ const float earthRadius = 6378100;                       // Radius of earth in m
 const float PI = 3.1415926535897932384626433832795;      // Math.PI
 
 // GPS VARS
+int gps_GeoFence_Radius = 1;                           // Geo-fence radius in meters
 float gps_HomePos[2] = { 33.773016, -118.149690 };       // long/lat of geo-fence point (HOME)
 float gps_TrackerPos[2];                                 // Array used to store long/lat of GPS tracker
 long gps_Timer_GetLast = 0;                              // TIME of last GPS reset
 long gps_Timer_GetTimeout = 60;                          // (if no GPS fix) [x] seconds until system reset
 long gps_SampleSize_Ticks = 5;                           // [x] ticks*60000UL (seconds) to sample GPS tracker long/lat (increases accuracy)
-int gps_GeoFence_Radius = 1;                             // Geo-fence radius in meters
 // String gps_pub = "";									 // GPS publish string
 
 // ACCELEROMETER VARS
@@ -84,6 +132,9 @@ long ALERT_PublishDelay = 30;                            // [x] minutes until ne
 //
 long display_Timer_GetLast = 0;                          // TIME of last GPS reset
 long display_Timer_GetDelay = 1;   
+
+//
+int DEEP_SLEEP_TIME = 12;
 
 // WATCHDOG TIMER 
 long WATCHDOG_Timer_ResetLast = 0;                       // TIME of last last system reset
@@ -227,6 +278,7 @@ void trackerMode_BOOT()
 	if( MODE_INIT )
 	{
 		MODE_INIT = 0;
+		blink_RGB("#0000FF", 255, 1, 5);
 	}	
 }
 
@@ -237,11 +289,12 @@ void trackerMode_SLEEP()
 	if( MODE_INIT )
 	{
 		MODE_INIT = 0;
-		
+		blink_RGB("#551A8B", 255, 1, 5);
+
 		if( __ALARM__ ) trigger_Alarm(0);
 
 		delay(500);
-		System.sleep( WKP, RISING /*, DEEP_SLEEP_TIME*60000UL*/ );
+		System.sleep( WKP, RISING , DEEP_SLEEP_TIME*60000UL*60000UL );
 
 		delay(500);
 		System.reset();
@@ -255,6 +308,7 @@ void trackerMode_REST()
 	if( MODE_INIT )
 	{
 		MODE_INIT = 0;
+		blink_RGB("#00FF00", 255, 1, 5);
 
 		if( __ALARM__ ) trigger_Alarm(0);
 
@@ -280,6 +334,8 @@ void trackerMode_GUARD()
 		delay(2000);
 		
 		MODE_INIT = 0;
+		blink_RGB("#FFA500", 255, 1, 5);
+
 		set_HardwareMode(0);
 	}
 
@@ -312,6 +368,8 @@ void trackerMode_ALERT()
 	if( MODE_INIT )
 	{
 		MODE_INIT = 0;
+		blink_RGB("#FF0000", 255, 1, 5);
+		
 		if( !__ALARM__ ) trigger_Alarm(1);
 		
 		set_HardwareMode(1);
@@ -514,6 +572,45 @@ void check_BatteryLevel()
 	{
 		batt_Timer_GetLast = TIME;
 	}
+}
+
+
+void blink_RGB( String color, int brightness, int rate, int duration )
+{
+	long hex_num = (long) strtol( &color[1], NULL, 16);
+
+	int r = hex_num >> 16;
+	int g = hex_num >> 8 & 0xFF;
+	int b = hex_num & 0xFF;
+
+	RGB.control(true);
+	delay(10);
+
+	RGB.color(r, g, b);	
+
+	/*long last = TIME;
+	long tick = 0;
+	bool led = 1;
+	
+	while( TIME - last < duration*1000UL )
+	{
+		if ( tick >= 20000 / (rate/2) ) {
+			tick = 0;
+			
+			if( led ) {
+				RGB.brightness(0); // NOT WORKING
+			} else {
+				RGB.brightness(255); // NOT WORKING
+			}
+
+			led = !led;
+		}
+
+		++tick;
+	}
+
+	delay(10);
+	RGB.control(false);*/
 }
 //****************************************************************/
 //****************************************************************/	
