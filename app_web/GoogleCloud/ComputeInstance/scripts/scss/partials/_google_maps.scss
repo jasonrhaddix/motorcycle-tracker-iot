@@ -1,0 +1,85 @@
+/* Google Maps Styling */
+
+#iw-container {
+    padding: 5px 13px;
+}
+
+#iw-container .iw-content {
+    font-family: Campton_Bold, Helvetica, sans-serif;
+    color: $white;
+    font-size: 1.4rem;
+    white-space: nowrap;
+    line-height: 18px;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.gm-style-iw {
+    margin: 20px;
+}
+
+#line {
+    text-decoration: underline;
+}
+
+.p-t-sm {
+    padding-top: 10px;
+}
+
+.p-b-sm {
+    padding-bottom: 14px;
+}
+
+
+a[href^="http://maps.google.com/maps"]{display:none !important}
+a[href^="https://maps.google.com/maps"]{display:none !important}
+
+
+.gmnoprint:first-child {
+    background-color: #FF0099 !important;
+}
+
+.gmnoprint a, .gmnoprint span, .gm-style-cc {
+    display:none;
+}
+.gmnoprint div {
+    // background:none !important;
+}
+
+
+.google-maps-content {
+    display: none;
+}
+
+
+
+
+.info-bubble-details {
+
+    h1 {
+        color: $white;
+        margin: 10px 10px 0;
+    }
+
+    #iw-container .iw-content {
+        // font-family: Campton_Bold, Helvetica, sans-serif;
+        color: $white;
+        font-size: 1.8rem;
+        white-space: nowrap;
+        line-height: 18px;
+        // padding-left: 40px;
+    }
+
+    .p-t-sm {
+        padding-top: 5px;
+        // margin-right: 10px;
+    }
+}   
+
+
+/* ._ibani_9748 {
+    div:nth-child(2) {
+        width: inital !important;
+        overflow: hidden !important;
+    }
+} */

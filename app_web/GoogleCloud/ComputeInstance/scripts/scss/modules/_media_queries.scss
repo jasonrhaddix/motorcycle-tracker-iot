@@ -1,0 +1,33 @@
+@mixin respond-to( $media )
+{
+	@if $media == xxs {
+		@media only screen and (max-width: $break-xxs) { @content; }
+
+	}
+
+	@if $media == xs {
+		@media only screen and (min-width: $break-xxs + 1) and (max-width: $break-xs) { @content; }
+
+	}
+
+	@else if $media == sm {
+		@media only screen and (min-width: $break-xs + 1) and (max-width: $break-sm) { @content; }
+
+	}
+
+	@else if $media == md {
+		@media only screen and (min-width: $break-sm + 1) and (max-width: $break-md) { @content; }
+
+	}
+
+	@else if $media == lg {
+		@media only screen and (min-width: $break-md + 1) and (max-width: $break-lg) { @content; }
+
+	}
+
+	@else if $media == xl {
+		@media only screen and (min-width: $break-lg + 1) { @content; }
+
+	}
+
+}

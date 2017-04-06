@@ -1,0 +1,14 @@
+body.page-home {
+
+	.main-container {
+	    height: 100%;
+
+	    .map-container {
+	    	height: 100%;
+
+	    	div:first-child {
+	    		background-color: transparent !important;
+	    	}
+	    }
+	}
+}
