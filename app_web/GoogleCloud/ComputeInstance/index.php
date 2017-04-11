@@ -47,6 +47,7 @@
         <meta name="theme-color" content="#151515">
         <meta name="apple-mobile-web-app-status-bar-style" content="#151515">
 
+        <script src="https://use.fontawesome.com/3ebcca6518.js"></script>
 
         <!-- Style Sheets -->
         <!-- <link rel="stylesheet" href="scripts/_libs/photo_sphere_viewer/photo-sphere-viewer.min.css">
@@ -142,9 +143,38 @@
         </header>
 
 
-        <div class="container-fluid main-container">
-            <section id="map" class="map-container"></section>
-        </div>
+        <section class="container-fluid main-container">
+            <div id="tracker-loader-container">
+                <div class="tracker-loader">
+                    <div class="loader">
+                        <svg 
+                            version="1.1"
+                            id="loader-1"
+                            xmlns="http://www.w3.org/2000/svg"
+                            xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+                            width="40px" height="40px"
+                            viewBox="0 0 50 50"
+                            style="enable-background:new 0 0 50 50;"
+                            xml:space="preserve">
+                            <path 
+                                fill="#000"
+                                d="M43.935,25.145c0-10.318-8.364-18.683-18.683-18.683c-10.318,0-18.683,8.365-18.683,18.683h4.068c0-8.071,6.543-14.615,14.615-14.615c8.072,0,14.615,6.543,14.615,14.615H43.935z">
+                            <animateTransform 
+                                attributeType="xml"
+                                attributeName="transform"
+                                type="rotate"
+                                from="0 25 25"
+                                to="360 25 25"
+                                dur="0.6s"
+                                repeatCount="indefinite"/>
+                            </path>
+                        </svg>
+                    </div>
+                    <p>Loading tracker data...</p>
+            </div>
+            </div>
+            <article id="map" class="map-container"></article>
+        </section>
 
 
         <footer class="container-fluid footer-main">
@@ -160,9 +190,10 @@
         <!-- API Scripts -->
         <script src="scripts/_libs/jquery/jquery.min.js"></script>
         <script src="scripts/_libs/bootstrap/js/bootstrap.min.js"></script>
+        <script src="scripts/_libs/gsap/TweenMax.js"></script>
         <script src="scripts/_libs/modernizr/modernizr.js"></script>
-        <script src="scripts/_libs/js_info_bubble/infobubble-compiled.js"></script>
-        <!-- <script src="scripts/_libs/mustache/mustache.min.js"></script> -->
+        <script src="scripts/_libs/js_info_bubble/infobubble.js"></script>
+        <script src="scripts/_libs/handlebars/handlebars.min.js"></script>
         <!-- <script src="scripts/_libs/videojs/video.min.js"></script> -->
         <!-- <script src="scripts/_libs/slickjs/slick.min.js"></script> -->
 
@@ -176,5 +207,5 @@
         <!-- <script async src="scripts/js/navigation.js"></script> -->
         <script src="scripts/js/main.js"></script>
 
-        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtY7XcAta9D76108tUv_JIOOfCFvvx-uQ&sensor=true&callback=initAWSAjax"></script>
+        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtY7XcAta9D76108tUv_JIOOfCFvvx-uQ&sensor=true&callback=initTrackerDB"></script>
 </html>

@@ -8,14 +8,10 @@
 @import "_resusable_classes";
 @import "_template_classes";
 
-// @import "partials/_video";
-// @import "partials/_slickjs_carousel";
 @import "partials/_google_maps";
 @import "partials/_header";
-@import "partials/_footer";
 
 @import "pages/_home";
-
 
 // Hide all SVGs for inital load. Using JS to unhide
 .differed-loading {

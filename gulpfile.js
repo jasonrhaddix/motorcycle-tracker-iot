@@ -92,9 +92,11 @@ gulp.task( 'copylibs', function()
 {
     // JS NODES
     gulp.src([ 'node_modules/jquery/dist/jquery.min.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/jquery' ));
+    gulp.src([ 'node_modules/gsap/TweenMax.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/gsap' ));
     gulp.src([ 'node_modules/bootstrap-sass/assets/javascripts/bootstrap.min.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/bootstrap/js' ));
     gulp.src([ 'node_modules/mobile-detect/mobile-detect.min.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/mobile_detect_js' ));
-    gulp.src([ 'node_modules/js-info-bubble/src/infobubble-compiled.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/js_info_bubble' ));
+    gulp.src([ 'node_modules/handlebars/dist/handlebars.min.js']).pipe( gulp.dest( devDir + '/scripts/_libs/handlebars' ));
+    gulp.src([ 'node_modules/js-info-bubble/src/infobubble.js' ]).pipe( gulp.dest( devDir + '/scripts/_libs/js_info_bubble' ));
 });
 
 

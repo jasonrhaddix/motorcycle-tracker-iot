@@ -4,7 +4,6 @@ header {
 	@extend .dropshadow-div-light;
 	background-color: $black;
 	color: $white;
-	// position: relative;
 	position: fixed;
 	z-index: 100;
 	overflow: hidden;

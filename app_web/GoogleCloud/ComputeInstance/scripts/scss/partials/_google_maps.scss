@@ -1,8 +1,105 @@
+
+.google-maps-content {
+    display: none;
+}
+
+
+#tracker-loader-container {
+    position: absolute;
+    display: none;
+    opacity: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(0,0,0,0.75);
+    z-index: 1030;
+    
+    .tracker-loader {
+        position: absolute;
+        border-radius: 10px;
+        background: rgba(20,20,20,0.95);
+        width: 180px;
+        height: 190px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+
+        .loader{
+            // margin: 0 0 2em;
+            height: 70px;
+            width: 100%;
+            text-align: center;
+            padding: 1em;
+            margin: 0 auto 1em;
+            display: inline-block;
+            vertical-align: top;
+            margin-top: 40px;
+        }
+
+        svg path, svg rect {
+            fill: #F36C2B;
+        }
+
+        p {
+            text-align: center;
+            color: #F36C2B;
+        }
+    }
+}
+
+
+
+.map-container {
+    height: 100%;
+
+    div:first-child {
+        background-color: transparent !important;
+    }
+}
+
+
+
+.info-bubble-details {
+    margin: 15px 15px 0 15px;
+    font-weight: bold;
+    left: -30px;
+
+    h1 {
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    p {
+        margin-bottom: 5px;
+    }
+}   
+
+
+
+
+
+
+
 /* Google Maps Styling */
+a[href^="http://maps.google.com/maps"]{display:none !important}
+a[href^="https://maps.google.com/maps"]{display:none !important}
 
 #iw-container {
     padding: 5px 13px;
 }
+
+#iw-container .iw-content {
+        color: $white;
+        font-size: 1.8rem;
+        white-space: nowrap;
+        line-height: 18px;
+        // padding-left: 40px;
+    }
+
+    .p-t-sm {
+        padding-top: 5px;
+        // margin-right: 10px;
+    }
+
 
 #iw-container .iw-content {
     font-family: Campton_Bold, Helvetica, sans-serif;
@@ -30,11 +127,6 @@
     padding-bottom: 14px;
 }
 
-
-a[href^="http://maps.google.com/maps"]{display:none !important}
-a[href^="https://maps.google.com/maps"]{display:none !important}
-
-
 .gmnoprint:first-child {
     background-color: #FF0099 !important;
 }
@@ -45,41 +137,3 @@ a[href^="https://maps.google.com/maps"]{display:none !important}
 .gmnoprint div {
     // background:none !important;
 }
-
-
-.google-maps-content {
-    display: none;
-}
-
-
-
-
-.info-bubble-details {
-
-    h1 {
-        color: $white;
-        margin: 10px 10px 0;
-    }
-
-    #iw-container .iw-content {
-        // font-family: Campton_Bold, Helvetica, sans-serif;
-        color: $white;
-        font-size: 1.8rem;
-        white-space: nowrap;
-        line-height: 18px;
-        // padding-left: 40px;
-    }
-
-    .p-t-sm {
-        padding-top: 5px;
-        // margin-right: 10px;
-    }
-}   
-
-
-/* ._ibani_9748 {
-    div:nth-child(2) {
-        width: inital !important;
-        overflow: hidden !important;
-    }
-} */
