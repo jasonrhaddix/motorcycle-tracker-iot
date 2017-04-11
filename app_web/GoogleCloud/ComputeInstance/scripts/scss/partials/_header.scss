@@ -1,0 +1,159 @@
+header {
+	@extend .clearfix;
+	// @extend .bottom-border;
+	@extend .dropshadow-div-light;
+	background-color: $black;
+	color: $white;
+	position: fixed;
+	z-index: 100;
+	overflow: hidden;
+	width: 100%;
+	height: 80px;
+	z-index: 1050;
+
+	&.openNav_Header {
+		border: none;
+		box-shadow: none;
+	}
+
+	.header-content {
+		@extend .add-content-padding;
+		width: 100%;
+		height: 100%;
+
+		.header-nav {
+			// position: absolute;
+			margin-top: 16px;
+			float: right;
+			height: 50px;
+			width: 50px;
+			cursor: pointer;
+
+			#nav-hamburger {
+	    	    width: 25px;
+			    height: 16px;
+			    margin: 0 auto;
+			    margin-top: 16px;
+				transform: rotate(0deg);
+				transition: .25s ease-in-out;
+			}
+		}
+
+		.header-logo {
+			position: relative;
+		    top: 24px;
+		    width: 160px;
+
+			div {
+				margin: 0;
+
+				a {
+					display: block;
+					outline: 0;
+
+					svg {
+						pointer-events: none;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+.nav-container {
+    margin-top: 12vh;
+
+	.nav-column{
+
+	    a, h2 a {
+			color: $white;
+
+			&:hover {
+				color: $grey_Light !important;
+			}
+		}
+
+		ul {
+			margin-left: 40%;
+
+			li{
+				margin: 35% 0;
+
+				ul {
+					margin-left: 0;
+
+					& li {
+						margin: 0;
+						margin-bottom: 5px;
+					}
+				}		
+			}
+
+
+			h2 {
+				color: $white;
+			}
+		}
+	}
+}
+
+
+
+
+/********************************************************************************/
+/* HAMBURGER MENU */
+/********************************************************************************/
+#nav-hamburger span {
+	display: block;
+	position: absolute;
+	height: 2px;
+	width: 100%;
+	background: $white;
+	border-radius: 0px;
+	opacity: 1;
+	left: 0;
+	transform: rotate(180deg);
+	transition: .25s ease-in-out;
+}
+
+#nav-hamburger span:nth-child(1) {
+	top: 0px;
+}
+
+#nav-hamburger span:nth-child(2),#nav-hamburger span:nth-child(3) {
+	top: 7px;
+}
+
+#nav-hamburger span:nth-child(4) {
+	top: 14px;
+}
+
+#nav-hamburger.openNav span:nth-child(1) {
+	top: 18px;
+	width: 0%;
+	left: 50%;
+	// background: $white;
+}
+
+#nav-hamburger.openNav span:nth-child(2) {
+	transform: rotate(45deg);
+	// background: $white;
+}
+
+#nav-hamburger.openNav span:nth-child(3) {
+	transform: rotate(-45deg);
+	// background: $white;
+}
+
+#nav-hamburger.openNav span:nth-child(4) {
+	top: 18px;
+	width: 0%;
+	left: 50%;
+	// background: $white;
+}
+
+
+.nav-hamburger .open {
+
+}
