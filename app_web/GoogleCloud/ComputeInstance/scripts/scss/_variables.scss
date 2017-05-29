@@ -6,6 +6,8 @@
 $white: #FFF;
 $black: #000;
 
+$ktm_Orange:#f36c2b;
+
 $grey_Lightest: #CCC;
 $grey_Light: #999;
 $grey_Medium: #666;
@@ -23,12 +25,11 @@ $nexonGreen: #BED600;
 /* UI Colors */
 $background: $grey_Darkest;
 
-$buttonBackground: #BED600;
-$buttonBackground_Hover: #D0EA01;
+$buttonText: $white;
+$buttonText_Hover: $ktm_Orange;
 
-$buttonText: #003333;
-$buttonText_Hover: #004949;
-
+/* $buttonBackground: #BED600;
+$buttonBackground_Hover: #D0EA01; */
 
 /********************************************************************************/
 /* BREAKPOINTS */

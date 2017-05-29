@@ -67,58 +67,40 @@
             <div class="vert-align-container">
                 <div class="horz-align-container">
                     <div class="nav-container">
-                        <div class="col-sm-3"></div>
-                        <div class="col-sm-3">
-                            <div class="nav-column">
+                        <div class="col-sm-12">
+                            <div class="nav-list">
                                 <ul>
-                                    <li><h2><a href="./">HOME</a></h2></li>
-                                    <li><h2><a href="games.php">GAMES</a></h2>
-                                        <ul>
-                                            <li><a href="">ALL Games</a></li>
-                                            <li><a href="">OZ: Broken Kingdom</a></li>
-                                            <li><a href="">Dominations</a></li>
-                                            <li><a href="">Evil Factory</a></li>
-                                            <li><a href="">After the End</a></li>
-                                        </ul>
+                                    <li>
+                                        <h2>
+                                            <a href="">MAP OPTIONS</a>
+                                        </h2>
+                                        <div class="nav-list-items">
+                                            <ul>
+                                                <li><a href="">Community Event</a></li>
+                                                <li><a href="">Community Managers</a></li>
+                                                <li><a href="">Partnered Streamers</a></li>
+                                                <li><a href="">Our Philosphy</a></li>
+                                                <li><a href="">Our Games</a></li>
+                                            </ul>    
+                                        </div>
                                     </li>
-                                    <li><h2><a href="">COMMUNITY</a></h2>
-                                        <ul>
-                                            <li><a href="">Community Event</a></li>
-                                            <li><a href="">Community Managers</a></li>
-                                            <li><a href="">Partnered Streamers</a></li>
-                                            <li><a href="">Our Philosphy</a></li>
-                                            <li><a href="">Our Games</a></li>
-                                        </ul>
+                                    <li>
+                                        <h2>
+                                            <a href="">TRACKER CALLS</a>
+                                        </h2>
+                                        <div class="nav-list-items">
+                                            <ul>
+                                                <li><a href="">Community Event</a></li>
+                                                <li><a href="">Community Managers</a></li>
+                                                <li><a href="">Partnered Streamers</a></li>
+                                                <li><a href="">Our Philosphy</a></li>
+                                                <li><a href="">Our Games</a></li>
+                                            </ul>    
+                                        </div>
                                     </li>
                                 </ul>
                             </div>
                         </div>
-                        <div class="col-sm-3">
-                            <div class="nav-column">
-                                <ul>
-                                    <li><h2><a href="">SUPPORT</a></h2></li>
-                                    <li><h2><a href="games.php">ABOUT</a></h2>
-                                        <ul>
-                                            <li><a href="">Our Mission</a></li>
-                                            <li><a href="">Our Culture</a></li>
-                                            <li><a href="">Around Nexon</a></li>
-                                            <li><a href="">Our Location</a></li>
-                                            <li><a href="">Our Partners</a></li>
-                                        </ul>
-                                    </li>
-                                    <li><h2><a href="">CAREERS</a></h2>
-                                        <ul>
-                                            <li><a href="">Life at Nexon</a></li>
-                                            <li><a href="">Benefits</a></li>
-                                            <li><a href="">Featured Jobs</a></li>
-                                            <li><a href="">Open Positions</a></li>
-                                            <li><a href="">FAQs</a></li>
-                                        </ul>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="col-sm-3"></div>
                     </div>
                 </div>
             </div>
@@ -204,7 +186,7 @@
         <!-- <script src="scripts/js/modernizr-dom.js"></script> -->
         <!-- <script src="scripts/js/slick_carousel.js"></script> -->
         <!-- <script src="scripts/js/event_scroller.js"></script> -->
-        <!-- <script async src="scripts/js/navigation.js"></script> -->
+        <script defer src="scripts/js/navigation.js"></script>
         <script src="scripts/js/main.js"></script>
 
         <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDtY7XcAta9D76108tUv_JIOOfCFvvx-uQ&sensor=true&callback=initTrackerDB"></script>

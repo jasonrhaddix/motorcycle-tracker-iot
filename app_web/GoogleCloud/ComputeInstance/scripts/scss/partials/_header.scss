@@ -1,9 +1,8 @@
 header {
 	@extend .clearfix;
-	// @extend .bottom-border;
-	@extend .dropshadow-div-light;
+	@extend .bottom-border;
+	// @extend .dropshadow-div-light;
 	background-color: $black;
-	color: $white;
 	position: fixed;
 	z-index: 100;
 	overflow: hidden;
@@ -12,8 +11,8 @@ header {
 	z-index: 1050;
 
 	&.openNav_Header {
-		border: none;
-		box-shadow: none;
+		// border: none;
+		// box-shadow: none;
 	}
 
 	.header-content {
@@ -64,35 +63,37 @@ header {
 .nav-container {
     margin-top: 12vh;
 
-	.nav-column{
+	.nav-list {
 
 	    a, h2 a {
+	    	font-family: Klavika_Light, Helvetica, sans-serif;
 			color: $white;
 
 			&:hover {
-				color: $grey_Light !important;
+				color: $buttonText_Hover !important;
 			}
 		}
 
+
 		ul {
-			margin-left: 40%;
+			// margin-left: 40%;
 
 			li{
-				margin: 35% 0;
+				@extend .bottom-border;
+				// margin: 35% 0;
 
-				ul {
-					margin-left: 0;
+				.nav-list-items {
+					height: 0;
+					overflow: hidden;
+					ul {
+						// margin-left: 0;
 
-					& li {
-						margin: 0;
-						margin-bottom: 5px;
+						& li {
+							// margin: 0;
+							// margin-bottom: 5px;
+						}
 					}
 				}		
-			}
-
-
-			h2 {
-				color: $white;
 			}
 		}
 	}

@@ -19,7 +19,7 @@ body, html {
 body {
     margin: 0;
     background-color: $background;
-    // font-family: Campton_Medium, Helvetica, sans-serif;
+    font-family: Klavika_Light, Helvetica, sans-serif;
     // letter-spacing: 0.05em;
     -webkit-font-smoothing: antialiased;
     text-shadow: 1px 1px 1px rgba(0,0,0,0.004); /* Turns no ClearType for Windows machines */
@@ -34,6 +34,10 @@ body {
     }
 }
 
+
+p {
+    font-family: Klavika_Light, Helvetica, sans-serif;
+}
 
 
 
@@ -66,7 +70,7 @@ a {
 
 
 h1, h2, h3, h4, h5, h6 {
-    // font-family: Campton_Bold, Helvetica, sans-serif;
+    font-family: Klavika_Medium, Helvetica, sans-serif;
     font-size: 2em;
 }
 
@@ -85,7 +89,7 @@ h1, h2, h3, h4, h5, h6 {
     background-color: $black;
 
     &.in {
-        opacity: 0.95 !important;
+        opacity: 1.0 !important;
     }
 }
 
