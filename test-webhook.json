@@ -1,0 +1,17 @@
+
+{
+  "event": "sendSleep",
+  "url": "https://[yourendpoint].execute-api.us-east-1.amazonaws.com/prod/ParticleSleepV1",
+  "requestType": "Post",
+  "headers": {
+        "x-api-key" : "[yourapikey]"
+   },
+   "json": {
+        "name": "{{SPARK_EVENT_NAME}}",
+        "data": "{{SPARK_EVENT_VALUE}}",
+        "source": "{{SPARK_CORE_ID}}",
+        "published_at": "{{SPARK_PUBLISHED_AT}}"
+    },
+  "mydevices": true,
+  "noDefaults": true
+}
