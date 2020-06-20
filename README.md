@@ -1,5 +1,8 @@
 # Particle Electron Motorcycle/Car Tracker
-[![Particle Electron](thumbnail.jpg)]()
+[![Particle Electron](repo_assets/thumbnail.jpg)]()
+[![Particle Electron](repo_assets/img-1.jpg)]()
+[![Particle Electron](repo_assets/img-2.jpg)]()
+[![Particle Electron](repo_assets/img-3.jpg)]()
 
 This is the repository for a GPS tracking application based on the Particle Electron Asset Tracker [HERE](https://www.particle.io/products/hardware/asset-tracker).
 
